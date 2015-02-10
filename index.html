@@ -1,0 +1,43 @@
+<html>
+<head>
+  <title>Turf Test</title>
+  <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
+  <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.3.0/turf.min.js"></script>
+
+  <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
+  <link href="style.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
+    var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0');
+    map.setView([-33.865, 151.209], 10);
+
+    var oReq = new XMLHttpRequest();
+    oReq.open("GET", "http://127.0.0.1:3000/stops.json", true);
+    oReq.send();
+    oReq.onreadystatechange = function() {
+      if(oReq.readyState === 4) {
+        var geoJson = turf.sample(JSON.parse(oReq.responseText), 40);
+
+        var toMarker = L.marker([151.209900, -33.865143], {title: "Start"});
+        toMarker.addTo(map);
+
+        var toPoint = turf.point([151.209900, -33.865143]);
+        toPoint.properties['marker-color'] = '#ff0000';
+
+        var fc = turf.featurecollection(geoJson.features);
+        console.log(fc);
+        console.log(geoJson);
+
+        var nearest = turf.nearest(toPoint, fc);
+        nearest.properties['marker-color'] = '#00ff00';
+
+        var result = turf.featurecollection(fc.features.concat(toPoint));
+        map.featureLayer.setGeoJSON(result);
+      }
+    };
+  </script>
+</body>
+</html>
