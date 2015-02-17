@@ -4,8 +4,11 @@
   <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
   <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.3.0/turf.min.js"></script>
 
+  <script src="//localhost:3000/q.js"></script>
+
   <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
   <link href="style.css" rel="stylesheet" />
+
 </head>
 <body>
   <div id="map"></div>
@@ -21,6 +24,7 @@
     var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0');
     var baseCoords = new L.latLng(-33.865,151.209);
     map.setView(baseCoords, 16);
+    L.control.scale().addTo(map);
 
     var icon = L.mapbox.marker.icon({
       "marker-color": "#8E8E8E",
@@ -70,55 +74,92 @@
 
     radiusLayer.setGeoJSON(radial);
 
+
+    function xhr(options) {
+      var deferred = Q.defer(),
+          req = new XMLHttpRequest();
+
+      req.open(options.method || 'GET', options.url, true);
+
+      // Set request headers if provided.
+      Object.keys(options.headers || {}).forEach(function (key) {
+        req.setRequestHeader(key, options.headers[key]);
+      });
+
+      req.onreadystatechange = function(e) {
+        if(req.readyState !== 4) {
+          return;
+        }
+
+        if([200,304].indexOf(req.status) === -1) {
+          deferred.reject(new Error('Server responded with a status of ' + req.status));
+        }
+        else {
+          deferred.resolve(e.target.response);
+        }
+      };
+
+      req.send(options.data || void 0);
+
+      return deferred.promise;
+    }
+
+
     // main func
     function calcStopsInRadius() {
-
       // clear previous
       if( nearestStopsLayer )
         map.removeLayer(nearestStopsLayer);
 
       var withinRadius = turf.featurecollection(stopsGeoJson.features.filter(function(stop){
-        if (turf.distance(stop, point, 'kilometers') <= .25) return true;
+        if (turf.distance(stop, point, 'kilometers') <= 0.25) return true;
       }));
 
       if( withinRadius.features.length > 0 ) {
         console.log('Found ' + withinRadius.features.length + ' stops within radius');
 
         withinRadius.features.forEach(function(feature){
-            var distance = parseFloat(turf.distance(point, feature, 'miles'));
-            feature.properties["marker-color"] = "C73E3E";
-            feature.properties["title"] = '<span>' + feature.properties.stop_name +'</span>';
+            var distance = parseFloat(turf.distance(point, feature, 'kilometers'));
+            feature.properties["marker-color"] = "2775DB";
+
             feature.properties["marker-size"] = "small";
             feature.properties["marker-symbol"] = "bus";
         });
 
         var nearest = turf.nearest(point, withinRadius);
-        var nearestdist = parseFloat(turf.distance(point, nearest, 'miles'));
+        var nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
-        nearest.properties["marker-color"] = "C73E3E";
-        nearest.properties["title"] = '<span>' + nearest.properties.stop_name +'</span>';
+        nearest.properties["marker-color"] = "ffffff";
+        nearest.properties["title"] = '<span>' + nearest.properties.stop_name +'</span><br /><span>' + nearest.properties.stop_id + '</span>'
         nearest.properties["marker-size"] = "small";
         nearest.properties["marker-symbol"] = "bus";
 
         nearestStopsLayer = L.mapbox.featureLayer()
-                            .setGeoJSON(turf.featurecollection([withinRadius, nearest]))
-                            .addTo(map);
+                            .setGeoJSON(turf.featurecollection([withinRadius, nearest]));
+
+        nearestStopsLayer.eachLayer(function(marker) {
+          var feature = marker.feature;
+          var stop_id = feature.properties.stop_id;
+          var content = '<div class="ajax-load-popup">' +
+                        '<span>' + feature.properties.stop_name + '</span>' +
+                        '<br /><span>' + feature.properties.stop_id + '</span>';
+
+          marker.on('click', function(e) {
+            xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id});
+            marker.openPopup();
+          });
+        });
+        nearestStopsLayer.addTo(map);
       }
     }
 
     // get the stops.json file from the server
-    var oReq = new XMLHttpRequest();
-    oReq.open("GET", "http://127.0.0.1:3000/gtfs/stops.json", true);
-    oReq.send();
-    oReq.onreadystatechange = function() {
-      if(oReq.readyState === 4) {
-        stopsGeoJson = JSON.parse(oReq.responseText);
-        calcStopsInRadius();
-
-      }
-      else {
-        console.log('No stops in radius');
-      }
+    function getStopsData() {
+      var prm = xhr({url:'http://127.0.0.1:3000/gtfs/stops.json'});
+      prm.done(function(geojson) {
+          stopsGeoJson = JSON.parse(geojson);
+          calcStopsInRadius();
+      });
     };
 
     // event handlers
@@ -139,9 +180,11 @@
       };
 
       radiusLayer.setGeoJSON(radial);
-
       calcStopsInRadius();
     });
+
+    // go
+    getStopsData();
   </script>
 </body>
 </html>
