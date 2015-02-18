@@ -15,8 +15,9 @@
   <script>
     L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
 
-    // will contain stops
+    // map layers
     var stopsGeoJson;
+    var shapeLayer;
 
     // global stops layer, needs to be cleared on drag
     var nearestStopsLayer;
@@ -104,6 +105,30 @@
       return deferred.promise;
     }
 
+    function addShapeLayer(data) {
+      var myStyle = {
+        "color": "red",
+        "weight": 3,
+        "opacity": 1
+      };
+
+      // clear previous
+      if( shapeLayer )
+          map.removeLayer(shapeLayer);
+
+      shapeLayer = L.geoJson(data, {
+        onEachFeature: function(feature, layer) {
+          layer.setStyle(myStyle);
+          layer.on({
+            add: function() {3333333
+              map.fitBounds(shapesJson[0].bbox);
+            }
+          });
+        }
+      });
+
+      shapeLayer.addTo(map);
+    }
 
     // main func
     function calcStopsInRadius() {
@@ -120,8 +145,11 @@
 
         withinRadius.features.forEach(function(feature){
             var distance = parseFloat(turf.distance(point, feature, 'kilometers'));
+            var popupContent = '<span>' + feature.properties.stop_name + '</span>' +
+                        '<br /><span>' + feature.properties.stop_id + '</span>' +
+                        '<div id="service-info"></div>';
             feature.properties["marker-color"] = "2775DB";
-
+            feature.properties["title"] = popupContent;
             feature.properties["marker-size"] = "small";
             feature.properties["marker-symbol"] = "bus";
         });
@@ -130,7 +158,9 @@
         var nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
         nearest.properties["marker-color"] = "ffffff";
-        nearest.properties["title"] = '<span>' + nearest.properties.stop_name +'</span><br /><span>' + nearest.properties.stop_id + '</span>'
+        nearest.properties["title"] = '<span>' + nearest.properties.stop_name +'</span>' +
+                        '<br /><span>' + nearest.properties.stop_id + '</span>' +
+                        '<div id="service-info"></div>';
         nearest.properties["marker-size"] = "small";
         nearest.properties["marker-symbol"] = "bus";
 
@@ -140,13 +170,18 @@
         nearestStopsLayer.eachLayer(function(marker) {
           var feature = marker.feature;
           var stop_id = feature.properties.stop_id;
-          var content = '<div class="ajax-load-popup">' +
-                        '<span>' + feature.properties.stop_name + '</span>' +
-                        '<br /><span>' + feature.properties.stop_id + '</span>';
-
           marker.on('click', function(e) {
-            xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id});
             marker.openPopup();
+            var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id}).done(function(data) {
+              var data = JSON.parse(data);
+              var el = document.getElementById('service-info');
+              el.innerHTML = '<h6>Routes from this Stop</h6>';
+              data.forEach(function(d) {
+                el.innerHTML += '<div class="fetch-shape" data-shapeid="' + d.shape_id + '">' +
+                '<strong>' + d.route_short_name + '</strong> ' + d.route_long_name + '</div>';
+                getShapeData(d.shape_id);
+              });
+            });
           });
         });
         nearestStopsLayer.addTo(map);
@@ -161,6 +196,15 @@
           calcStopsInRadius();
       });
     };
+
+    function getShapeData(shape_id) {
+      var prm = xhr({url:'http://127.0.0.1:3001/shapes/' + shape_id});
+      prm.done(function(geojson) {
+        var geojson = JSON.parse(geojson);
+        console.log(geojson);
+        addShapeLayer(geojson);
+      });
+    }
 
     // event handlers
     positionMarker.on('drag', function(evt) {
