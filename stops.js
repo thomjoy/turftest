@@ -15,6 +15,9 @@ var turf = require('turf');
 var data = require(__dirname + '/gtfs/stops.json');
 var API_DEFAULT_UNIT = 'kilometers';
 
+var moment = require('moment');
+moment().format();
+
 var _ = require('underscore');
 
 // set up middleware
@@ -71,6 +74,16 @@ stops.param('shapeid', function(req, res, next, shapeid) {
   }
 });
 
+stops.param('minutes', function(req, res, next, minutes) {
+  if( minutes.match(/^\d+$/gi) ) {
+    req.minutes = minutes;
+    next();
+  }
+  else {
+    next(new Error('minutes should be a numeric value'));
+  }
+});
+
 // end points
 stops.route('/within/:distance/:latLng/')
   .get(function(req, res) {
@@ -90,13 +103,14 @@ stops.route('/within/:distance/:latLng/')
     res.json(withinRadius);
   });
 
+// get routes from a given stop
 stops.route('/stops/:stopid')
   .get(function(req, res) {
-    console.log(req.stopid);
     var query = "SELECT DISTINCT trips.route_id, routes.route_short_name, routes.route_long_name, trips.shape_id " +
     "FROM trips " +
     "JOIN routes on trips.route_id = routes.route_id " +
-    "WHERE trip_id IN (SELECT DISTINCT trip_id FROM stop_times WHERE stop_id = $1)";
+    "WHERE trip_id IN (SELECT DISTINCT trip_id FROM stop_times WHERE stop_id = $1) " +
+    "ORDER BY trips.route_id ASC";
     var params = [req.stopid];
 
     pg.connect(connString, function(err, client, done) {
@@ -106,6 +120,61 @@ stops.route('/stops/:stopid')
       client.query(query, params, function(err, trips) {
         if( err ) pgErrHandler(err);
 
+        res.json(trips.rows);
+      });
+    });
+  });
+
+stops.route('/stops/:stopid/in/:minutes')
+  .get(function(req, res) {
+    var query = "SELECT DISTINCT st.trip_id, st.departure_time, t.route_id" +
+    " FROM stop_times st" +
+    " JOIN trips t ON t.trip_id = st.trip_id" +
+    " WHERE st.stop_id = $1" +
+    " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '5 minute')" +
+    " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute')" +
+    " ORDER BY st.departure_time ASC";
+    var params = [req.stopid];
+
+    console.log("Stop ID: " + req.stopid);
+    console.log("Minutes: " + req.minutes);
+
+    pg.connect(connString, function(err, client, done) {
+      done();
+      if( err ) pgErrHandler(err);
+
+      client.query(query, params, function(err, trips) {
+        if( err ) pgErrHandler(err);
+
+        trips.rows.forEach(function(t) {
+          var date = new Date();
+          var h = parseInt(date.getHours(), 10);
+          var m = parseInt(date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes(), 10);
+          var s = parseInt(date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds(), 10);
+
+          var dep_time = t.departure_time.split(':');
+          console.log('h: ' + h);
+          console.log('m: ' + m);
+          console.log('s: ' + s);
+          console.log("dep_time: " + dep_time);
+
+          // SOMETHING IS removing an hour from the departure time, even though running the query directly works...
+          if(dep_time != 0) dep_time[0]++;
+
+          var diff;
+
+          // hours
+          if (dep_time[0] == h && dep_time[1] !== m)
+            diff = dep_time[1] - m;
+          // if different hour
+          if (dep_time[0] > h)
+            diff = 60 - (dep_time[1] - m);
+
+          console.log("DIFF: " + diff + " minutes");
+
+          t.departure_time = dep_time.join(':');
+          t.departure_time_mins = diff;
+        });
         res.json(trips.rows);
       });
     });

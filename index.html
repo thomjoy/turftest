@@ -3,21 +3,42 @@
   <title>Turf Test</title>
   <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
   <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.3.0/turf.min.js"></script>
+  <script src="//code.jquery.com/jquery-2.1.3.js"></script>
 
   <script src="//localhost:3000/q.js"></script>
 
   <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
+  <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
   <link href="style.css" rel="stylesheet" />
 
 </head>
 <body>
-  <div id="map"></div>
+  <div class="left">
+    <h1 id="header">NSW Buses Explorer</h1>
+    <div id="location-info">
+      <div id="stops-nearby"></div>
+    </div>
+    <div id="container">
+      <h2 id="stop-name"></h2>
+      <p id="stop-distance"></p>
+      <ul id="route-info"></ul>
+    </div>
+  </div>
+  <div class="right">
+    <div id="map"></div>
+  </div>
   <script>
+    var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
+
     L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
+
+    // constants
+    var WALKING_DISTANCE = 0.25;
 
     // map layers
     var stopsGeoJson;
     var shapeLayer;
+    var startEndRouteLayer;
 
     // global stops layer, needs to be cleared on drag
     var nearestStopsLayer;
@@ -64,15 +85,15 @@
     // radius
     var radiusLayer = L.mapbox.featureLayer().addTo(map);
     var radial = pointRadius(point, .25, 'kilometers', 120);
-
-    radial.properties = {
-      "fill": "#00704A",
+    var radialStyle = {
+      "fill": "#6baed6",
       "fill-opacity": 0.1,
-      "stroke": "#00704A",
+      "stroke": "#3182bd",
       "stroke-width": 2,
       "stroke-opacity": 0.5
     };
 
+    radial.properties = radialStyle;
     radiusLayer.setGeoJSON(radial);
 
 
@@ -107,26 +128,61 @@
 
     function addShapeLayer(data) {
       var myStyle = {
-        "color": "red",
+        "color": "#fc8d59",
         "weight": 3,
         "opacity": 1
       };
 
       // clear previous
       if( shapeLayer )
-          map.removeLayer(shapeLayer);
+        map.removeLayer(shapeLayer);
+      if( startEndRouteLayer )
+        map.removeLayer(startEndRouteLayer);
 
       shapeLayer = L.geoJson(data, {
         onEachFeature: function(feature, layer) {
           layer.setStyle(myStyle);
           layer.on({
-            add: function() {3333333
-              map.fitBounds(shapesJson[0].bbox);
+            add: function() {
+              //map.fitBounds(data.bbox[0], data.bbox[1]);
+              map.fitBounds(shapeLayer.getBounds());
             }
           });
         }
       });
 
+      function generateMarkerGeoJson(coords) {
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [coords[0], coords[1]]
+          },
+          properties: {
+            "marker-size": "small",
+            "marker-color": "2775DB",
+            "marker-symbol": "bus"
+          }
+        }
+      }
+
+      var c = data.geometry.coordinates;
+      var endPoints = [generateMarkerGeoJson(c[0]), generateMarkerGeoJson(c[c.length-1])];
+      endPoints[0].properties["title"] = "Start";
+      endPoints[0].properties["marker-color"] = "31a354";
+      endPoints[1].properties["title"] = "End";
+      endPoints[1].properties["marker-color"] = "a50f15";
+
+      // generate this on the server?
+      startEndRouteLayer = L.mapbox.featureLayer()
+                            .setGeoJSON({ type: "FeatureCollection", features: endPoints });
+
+      startEndRouteLayer.eachLayer(function(marker) {
+        marker.bindPopup(marker.feature.properties.title);
+        marker.openPopup();
+      });
+
+      startEndRouteLayer.addTo(map);
       shapeLayer.addTo(map);
     }
 
@@ -137,17 +193,19 @@
         map.removeLayer(nearestStopsLayer);
 
       var withinRadius = turf.featurecollection(stopsGeoJson.features.filter(function(stop){
-        if (turf.distance(stop, point, 'kilometers') <= 0.25) return true;
+        if (turf.distance(stop, point, 'kilometers') <= WALKING_DISTANCE) return true;
       }));
 
       if( withinRadius.features.length > 0 ) {
-        console.log('Found ' + withinRadius.features.length + ' stops within radius');
+        $('#stops-nearby')
+          .html('<span id="num-stops">' + withinRadius.features.length + ' </span>stops within a <span id="walking-distance">' + WALKING_DISTANCE + 'km</span> walking distance');
 
         withinRadius.features.forEach(function(feature){
             var distance = parseFloat(turf.distance(point, feature, 'kilometers'));
-            var popupContent = '<span>' + feature.properties.stop_name + '</span>' +
-                        '<br /><span>' + feature.properties.stop_id + '</span>' +
+            var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>' +
+                        '<div id="services-next"></div>' +
                         '<div id="service-info"></div>';
+
             feature.properties["marker-color"] = "2775DB";
             feature.properties["title"] = popupContent;
             feature.properties["marker-size"] = "small";
@@ -158,8 +216,8 @@
         var nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
         nearest.properties["marker-color"] = "ffffff";
-        nearest.properties["title"] = '<span>' + nearest.properties.stop_name +'</span>' +
-                        '<br /><span>' + nearest.properties.stop_id + '</span>' +
+        nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>' +
+                        '<div id="services-next"></div>' +
                         '<div id="service-info"></div>';
         nearest.properties["marker-size"] = "small";
         nearest.properties["marker-symbol"] = "bus";
@@ -170,16 +228,56 @@
         nearestStopsLayer.eachLayer(function(marker) {
           var feature = marker.feature;
           var stop_id = feature.properties.stop_id;
+          var stopName = feature.properties.stop_name;
+
           marker.on('click', function(e) {
+            marker.bindPopup(feature.properties.title, {minWidth: 360, maxWidth: 420, closeButton: true});
             marker.openPopup();
+            var _thismarker = marker;
+
+            nearestStopsLayer.eachLayer(function(_marker) {
+              if(_marker._leaflet_id !== _thismarker._leaflet_id)
+                _marker.options.opacity = 0.4;
+            });
+
+            var featureMarker = {
+              type: "Feature",
+              geometry: {
+                type: "Point",
+                coordinates: [positionMarker.getLatLng().lng, positionMarker.getLatLng().lat]
+              }
+            };
+
+            var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
+            $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from you');
+
             var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id}).done(function(data) {
               var data = JSON.parse(data);
-              var el = document.getElementById('service-info');
-              el.innerHTML = '<h6>Routes from this Stop</h6>';
+              var el = $('#route-info').empty();
+              $('#stop-name').html(stopName);
+              $('#')
+              var listEls = [];
+
+              // add Routes to the sidebar
               data.forEach(function(d) {
-                el.innerHTML += '<div class="fetch-shape" data-shapeid="' + d.shape_id + '">' +
-                '<strong>' + d.route_short_name + '</strong> ' + d.route_long_name + '</div>';
-                getShapeData(d.shape_id);
+                var listEl = $('<li class="fetch-shape" data-shapeid="' + d.shape_id + '"></li>');
+                listEl.on('click', function(evt) {
+                  getShapeData(evt.currentTarget.dataset.shapeid);
+                });
+                listEl.html('<strong class="bus-number">' + d.route_short_name + '</strong> ' + d.route_long_name + '</li>');
+                listEls.push(listEl);
+              });
+
+              el.html(listEls);
+
+              // add Upcoming buses to the Popup
+              getServicesInMinutes(stop_id, 5, function(data) {
+                var nextServices = document.getElementById('services-next');
+                var nextFive = data.slice(0, 4);
+                data.forEach(function(d) {
+                  nextServices.innerHTML += '<div class="service"><strong class="bus-number">' + d.route_id.split('_')[1] + '</strong>' +
+                    ' arr in ' + d.departure_time_mins + 'm (' + d.departure_time.split(':').slice(0,1) + ')</div>';
+                });
               });
             });
           });
@@ -201,8 +299,14 @@
       var prm = xhr({url:'http://127.0.0.1:3001/shapes/' + shape_id});
       prm.done(function(geojson) {
         var geojson = JSON.parse(geojson);
-        console.log(geojson);
         addShapeLayer(geojson);
+      });
+    }
+
+    function getServicesInMinutes(stopId, minutes, cb) {
+      var prm = xhr({url:'http://127.0.0.1:3001/stops/' + stopId + '/in/' + minutes});
+      prm.done(function(services) {
+        cb(JSON.parse(services));
       });
     }
 
@@ -211,19 +315,15 @@
       var lat = this.getLatLng()['lat'];
       var lon = this.getLatLng()['lng'];
 
+      // clear the sidebar
+      $('#route-info').empty();
+
       // global
       point = turf.point(lon, lat);
-      var radial = pointRadius(point, .25, 'kilometers', 120);
-
-      radial.properties = {
-        "fill": "#00704A",
-        "fill-opacity": 0.1,
-        "stroke": "#00704A",
-        "stroke-width": 2,
-        "stroke-opacity": 0.5
-      };
-
+      var radial = pointRadius(point, WALKING_DISTANCE, 'kilometers', 120);
+      radial.properties = radialStyle;
       radiusLayer.setGeoJSON(radial);
+
       calcStopsInRadius();
     });
 

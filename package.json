@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "logger": "0.0.1",
+    "moment": "^2.9.0",
     "pg": "^4.2.0",
     "pg-cursor": "^1.0.0",
     "underscore": "^1.7.0"
