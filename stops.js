@@ -223,5 +223,33 @@ stops.route('/shapes/:shapeid')
     });
   });
 
+// this will sometimes be wrong, as shape != route != trip (can be fewer/more stops etc...)
+// for now though, it's fine
+stops.route('/stops/along/:shapeid')
+  .get(function(req, res) {
+    var shapeid = req.shapeid;
+    var query = 'SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time' +
+    ' FROM stop_times st' +
+    ' JOIN stops s ON s.stop_id = st.stop_id' +
+    ' WHERE trip_id = (SELECT trip_id FROM trips WHERE shape_id = $1 LIMIT 1)' +
+    ' ORDER BY st.stop_sequence;';
+    var params = [shapeid];
+
+    pg.connect(connString, function(err, client, done) {
+      done();
+      if( err ) pgErrHandler(err);
+
+      client.query(query, params, function(err, routeData) {
+        if( err ) pgErrHandler(err);
+
+        routeData.rows.forEach(function(r) {
+          console.log(r);
+        });
+
+        res.json(routeData.rows);
+      });
+    });
+  });
+
 stops.listen(3001);
 console.log('Stops API listening on 3001');

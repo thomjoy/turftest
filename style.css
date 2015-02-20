@@ -1,35 +1,46 @@
 * { font-family: 'Open Sans'; }
 body { margin: 0; padding: 0; }
 
-
-
-.left { padding:0; margin: 0; overflow: hidden; width: 18%; float: left; }
+.left { min-height: 1024px; padding: 0; margin: 0; overflow: hidden; width: 18%; float: left; }
 .right { padding:0; margin: 0; overflow: hidden; width: 82%; float: right;}
-#map { width: 100%; height: 1024px; }
+#map { width: 100%; min-height: 1024px; height: 100%; }
 #header { margin: 0; padding: 15px 5px; font-size: 21px; font-weight: normal; color: #fff; background-color: #3C4E5A; }
 
 #location-info {
   padding: 5px;
-  padding-top: 15px;
-  padding-bottom: 15px;
-  font-size: 14px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 12px;
   color: #fff;
-  background-color: mediumseagreen;
+  background-color: indianred;
 }
 
 #location-info #num-stops { font-weight: bold; }
 #location-info #walking-distance { font-weight: bold; }
 
-#container { height: 1024px; padding: 5px; }
-#container #route-info { list-style: none; margin: 0; padding: 0; }
-#route-info li { font-size: 14px; color: #333; padding: 2px 2px; cursor: pointer; }
+#stop-container { padding: 5px; padding-top: 10px; padding-bottom: 10px; background-color: mediumseagreen; }
+#stop-name { font-size: 16px; color: #fff; margin: 0; }
+#stop-distance { font-size: 12px; color: #fff; margin: 0; }
+
+#route-container { padding: 5px; background-color: snow; margin-top: 5px; }
+#route-container #route-info { list-style: none; margin: 0; padding: 0; }
+#route-info li { font-size: 12px; color: #333; padding: 2px 2px; cursor: pointer; }
+#route-info li.active { display: block; }
+#route-info li.inactive { display: none; }
+
+#shape-container { padding: 5px; }
+#shape-container #shape-info { margin-top: 10px; }
+.shape-meta { font-size: 12px; margin: 0; padding-bottom: 4px; color: lightblue; }
+.stop-on-shape { font-size: 11px; padding-top: 4px; padding-bottom:4px; }
+.stop-on-shape:nth-child(odd) { background-color: #eee; }
+.stop-on-shape strong { display: inline-block; margin-right: 8px; }
 
 .leaflet-popup-content .stop-name { padding-bottom: 8px; display: inline-block; }
-.leaflet-popup-content .stop-id { }
+.leaflet-popup-content .stop-id { font-size: 10px; color: #999; }
 
 #service-info { padding-top: 5px; }
-#stop-name { font-size: 16px; color: #3C4E5A; margin-bottom: 4px; margin-top: 8px;}
-#stop-distance { font-size: 12px; color: #777; }
+
+
 #service-info div { color: #3C4E5A; font-weight: normal; }
 
 #service-next { }

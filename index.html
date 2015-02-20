@@ -6,6 +6,7 @@
   <script src="//code.jquery.com/jquery-2.1.3.js"></script>
 
   <script src="//localhost:3000/q.js"></script>
+  <script>Q.longStackSupport = true;</script>
 
   <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
   <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
@@ -18,10 +19,19 @@
     <div id="location-info">
       <div id="stops-nearby"></div>
     </div>
-    <div id="container">
+    <div id="stop-container">
       <h2 id="stop-name"></h2>
       <p id="stop-distance"></p>
+    </div>
+
+    <div id="route-container">
       <ul id="route-info"></ul>
+    </div>
+
+    <div id="shape-container">
+      <div id="shape-info">
+        <div id="shape-meta"></div>
+      </div>
     </div>
   </div>
   <div class="right">
@@ -146,6 +156,10 @@
             add: function() {
               //map.fitBounds(data.bbox[0], data.bbox[1]);
               map.fitBounds(shapeLayer.getBounds());
+            },
+            click: function(evt) {
+              console.log('Clicked on shape');
+              console.log(evt);
             }
           });
         }
@@ -198,7 +212,7 @@
 
       if( withinRadius.features.length > 0 ) {
         $('#stops-nearby')
-          .html('<span id="num-stops">' + withinRadius.features.length + ' </span>stops within a <span id="walking-distance">' + WALKING_DISTANCE + 'km</span> walking distance');
+          .html('<span id="num-stops">' + withinRadius.features.length + ' </span>bus stops within <span id="walking-distance">' + WALKING_DISTANCE + 'km</span>');
 
         withinRadius.features.forEach(function(feature){
             var distance = parseFloat(turf.distance(point, feature, 'kilometers'));
@@ -231,13 +245,15 @@
           var stopName = feature.properties.stop_name;
 
           marker.on('click', function(e) {
-            marker.bindPopup(feature.properties.title, {minWidth: 360, maxWidth: 420, closeButton: true});
+            marker.bindPopup(feature.properties.title, {minWidth: 240, maxWidth: 300, closeButton: true});
             marker.openPopup();
+
+            marker.feature.properties['marker-color'] = '3cb371'; //mediumseagreen
             var _thismarker = marker;
 
             nearestStopsLayer.eachLayer(function(_marker) {
               if(_marker._leaflet_id !== _thismarker._leaflet_id)
-                _marker.options.opacity = 0.4;
+                marker.feature.properties['opacity'] = 0.4;
             });
 
             var featureMarker = {
@@ -249,21 +265,37 @@
             };
 
             var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
-            $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from you');
+            $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
 
             var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id}).done(function(data) {
               var data = JSON.parse(data);
               var el = $('#route-info').empty();
               $('#stop-name').html(stopName);
-              $('#')
               var listEls = [];
 
               // add Routes to the sidebar
+              // make route listing a <select>
+              // add recently arriving services as per the current format
               data.forEach(function(d) {
                 var listEl = $('<li class="fetch-shape" data-shapeid="' + d.shape_id + '"></li>');
                 listEl.on('click', function(evt) {
-                  getShapeData(evt.currentTarget.dataset.shapeid);
+                  var shapeId = evt.currentTarget.dataset.shapeid;
+                  $(this).addClass('active');
+                  $('.fetch-shape').not('.active').addClass('inactive');
+
+                  getShapeData(shapeId);
+                  getStopsForShape(shapeId, function(stopsData) {
+                    var elData = "";
+                    var elData = '<div id="shape-meta"><p>' + stopsData.length + ' stops in xx minutes (est)</p></div>';
+
+                    stopsData.forEach(function(s) {
+                      elData += '<div class="stop-on-shape" data-stopId="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
+                    });
+
+                    $('#shape-info').html(elData).show();
+                  });
                 });
+
                 listEl.html('<strong class="bus-number">' + d.route_short_name + '</strong> ' + d.route_long_name + '</li>');
                 listEls.push(listEl);
               });
@@ -307,6 +339,13 @@
       var prm = xhr({url:'http://127.0.0.1:3001/stops/' + stopId + '/in/' + minutes});
       prm.done(function(services) {
         cb(JSON.parse(services));
+      });
+    }
+
+    function getStopsForShape(shapeId, cb) {
+      var prm = xhr({url:'http://127.0.0.1:3001/stops/along/' + shapeId});
+      prm.done(function(stops) {
+        cb(JSON.parse(stops));
       });
     }
 

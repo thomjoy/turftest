@@ -8,8 +8,7 @@ Playing around with turf.js
 - when marker in radius is actioned, fade other markers.
 - double click to move the 'you' marker to anywhere on the map
 - show all routes from a stop (different colour polylines?)
-
-
+- add geocoding - i.e. move marker by typing an address
 - get geolocation working
 - how to get gps access on a mobile device?
 - can we get traffic data?
