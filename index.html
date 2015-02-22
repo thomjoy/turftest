@@ -59,6 +59,7 @@
     var stopsGeoJson;
     var shapeLayer;
     var startEndRouteLayer;
+    var stopsOnRouteLayer;
 
     // global stops layer, needs to be cleared on drag
     var nearestStopsLayer;
@@ -146,9 +147,9 @@
       return deferred.promise;
     }
 
-    function addShapeLayer(data) {
+    function addShapeLayer(shapeData, stopsData) {
       var myStyle = {
-        "color": "#fc8d59",
+        "color": "#2775DB",
         "weight": 3,
         "opacity": 1
       };
@@ -158,14 +159,38 @@
         map.removeLayer(shapeLayer);
       if( startEndRouteLayer )
         map.removeLayer(startEndRouteLayer);
+      if( stopsOnRouteLayer )
+        map.removeLayer(stopsOnRouteLayer);
 
-      shapeLayer = L.geoJson(data, {
+      shapeLayer = L.geoJson(shapeData, {
         onEachFeature: function(feature, layer) {
           layer.setStyle(myStyle);
+
           layer.on({
             add: function() {
-              //map.fitBounds(data.bbox[0], data.bbox[1]);
               map.fitBounds(shapeLayer.getBounds());
+
+              var circles = [];
+              var circleOptions = {
+                color: '#2775DB',      // Stroke color
+                opacity: 0.8,         // Stroke opacity
+                weight: 8,         // Stroke weight
+                fillColor: '#fff',  // Fill color
+                fillOpacity: 0.6    // Fill opacity
+              };
+
+              // plot stops on shape as circles
+              // create a layer for this
+              stopsData.forEach(function(stop) {
+                var c = L.circle([stop.stop_lat, stop.stop_lon], 2, circleOptions);
+                circles.push(c);
+                c.addTo(map);
+              });
+
+              //stopsOnRouteLayer = L.mapbox.featureLayer().addTo(map);
+              //stopsOnRouteLayer.addLayer(circles);
+              //map.addLayer(stopsOnRouteLayer);
+              //console.log(stopsOnRouteLayer);
             },
             click: function(evt) {
               console.log('Clicked on shape');
@@ -190,7 +215,7 @@
         }
       }
 
-      var c = data.geometry.coordinates;
+      var c = shapeData.geometry.coordinates;
       var endPoints = [generateMarkerGeoJson(c[0]), generateMarkerGeoJson(c[c.length-1])];
       endPoints[0].properties["title"] = "Start";
       endPoints[0].properties["marker-color"] = "31a354";
@@ -251,7 +276,7 @@
 
         nearestStopsLayer.eachLayer(function(marker) {
           var feature = marker.feature;
-          var stop_id = feature.properties.stop_id;
+          var stopId = feature.properties.stop_id;
           var stopName = feature.properties.stop_name;
 
           marker.on('click', function(e) {
@@ -277,19 +302,17 @@
             var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
             $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
 
-            var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id}).done(function(data) {
-              var data = JSON.parse(data);
-              //var arrivingSoonList = $('#arriving-soon').empty();
+            // clear whatever is in the stops lists for a route
+            //$('#shape-container').hide();
+
+            var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stopId}).done(function(stopsResp) {
+              var routesFromStop = JSON.parse(stopsResp);
               var allRoutesSelect = $('#all-routes select');
               var optionEls = [];
 
               $('#stop-name').html(stopName);
 
-              // add Routes to the sidebar
-              // make route listing a <select>
-              // add recently arriving services as per the current format
-              data.forEach(function(d) {
-                //var listEl = $('<li class="fetch-shape" data-shapeid="' + d.shape_id + '"></li>');
+              routesFromStop.forEach(function(d) {
                 var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
                 optionEls.push(optionEl);
               });
@@ -302,26 +325,29 @@
                 var optionSelected = $('option:selected', this);
                 var shapeId = this.value;
 
-                getShapeData(shapeId);
-                  getStopsForShape(shapeId, function(stopsData) {
-                    var elData = "";
-                    var elData = '<div class="header" id="shape-meta">' + stopsData.length + ' stops in xx minutes (est)</div>';
 
-                    stopsData.forEach(function(s) {
-                      var highlightRow = $('#stop-name').text() === s.stop_name ? ' highlight' : '';
-                      elData += '<div class="stop-on-shape' + highlightRow + '" data-stopId="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
-                    });
-                    $('#shape-info h2').show();
-                    $('#shape-info').html(elData).show();
+                getStopsForShape(shapeId, function(stopsData) {
+                  // plot the shape, with stops
+                  getShapeData(shapeId, stopsData);
+
+                  var elData = "";
+                  var elData = '<div class="header" id="shape-meta">' + stopsData.length + ' stops in xx minutes (est)</div>';
+
+                  stopsData.forEach(function(s) {
+                    var highlightRow = $('#stop-name').text() === s.stop_name ? ' highlight' : '';
+                    elData += '<div class="stop-on-shape' + highlightRow + '" data-stopId="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
                   });
+                  $('#shape-info h2').show();
+                  $('#shape-info').html(elData).show();
+                });
               });
 
               // add Upcoming buses to the Popup
-              getServicesInMinutes(stop_id, 5, function(data) {
+              getServicesInMinutes(stopId, 5, function(arrivingSoonData) {
                 var arrivingSoon = $('#arriving-soon');
                 var arrivingSoonItems = [];
 
-                data.forEach(function(d) {
+                arrivingSoonData.forEach(function(d) {
                   var arr = (d.departure_time.split(':'));
                   var depTime = arr[0] + ':' + arr[1];
                   var li = '<li class="service"><strong class="bus-number">' + d.route_id.split('_')[1] + '</strong>' +
@@ -331,7 +357,6 @@
 
                 $('#arriving-soon-container h2').show();
                 arrivingSoon.html(arrivingSoonItems);
-
               });
             });
           });
@@ -349,11 +374,11 @@
       });
     };
 
-    function getShapeData(shape_id) {
-      var prm = xhr({url:'http://127.0.0.1:3001/shapes/' + shape_id});
+    function getShapeData(shapeId, stopsData) {
+      var prm = xhr({url:'http://127.0.0.1:3001/shapes/' + shapeId});
       prm.done(function(geojson) {
         var geojson = JSON.parse(geojson);
-        addShapeLayer(geojson);
+        addShapeLayer(geojson, stopsData);
       });
     }
 

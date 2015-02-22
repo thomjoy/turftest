@@ -226,7 +226,7 @@ stops.route('/shapes/:shapeid')
 stops.route('/stops/along/:shapeid')
   .get(function(req, res) {
     var shapeid = req.shapeid;
-    var query = 'SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time' +
+    var query = 'SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time, s.stop_lat, s.stop_lon' +
     ' FROM stop_times st' +
     ' JOIN stops s ON s.stop_id = st.stop_id' +
     ' WHERE trip_id = (SELECT trip_id FROM trips WHERE shape_id = $1 LIMIT 1)' +
