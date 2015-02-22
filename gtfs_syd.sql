@@ -54,7 +54,7 @@ SELECT date_trunc('minute', '14:30'::time without time zone) - date_trunc('minut
 SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time
 FROM stop_times st
 JOIN stops s ON s.stop_id = st.stop_id
-WHERE trip_id = (SELECT route_id FROM shapes WHERE shape_id = '156786' LIMIT 1)
-ORDER BY st.stop_sequence
+WHERE trip_id = (SELECT trip_id FROM trips WHERE shape_id = '156786' LIMIT 1)
+ORDER BY st.stop_sequence;
 
 SELECT greatest(-'1 hour'::interval, '1 hour'::interval);

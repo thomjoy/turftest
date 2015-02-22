@@ -25,12 +25,22 @@
     </div>
 
     <div id="route-container">
-      <ul id="route-info"></ul>
+      <div id="arriving-soon-container">
+        <h2 class="header">Arriving Soon</h2>
+        <ul id="arriving-soon"></ul>
+      </div>
+
+      <div id="all-routes-container">
+        <h2 class="header" id="">All routes from this stop</h2>
+        <div id="all-routes">
+          <select></select>
+        </div>
+      </div>
     </div>
 
     <div id="shape-container">
       <div id="shape-info">
-        <div id="shape-meta"></div>
+        <div class="header" id="shape-meta"></div>
       </div>
     </div>
   </div>
@@ -269,47 +279,59 @@
 
             var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stop_id}).done(function(data) {
               var data = JSON.parse(data);
-              var el = $('#route-info').empty();
+              //var arrivingSoonList = $('#arriving-soon').empty();
+              var allRoutesSelect = $('#all-routes select');
+              var optionEls = [];
+
               $('#stop-name').html(stopName);
-              var listEls = [];
 
               // add Routes to the sidebar
               // make route listing a <select>
               // add recently arriving services as per the current format
               data.forEach(function(d) {
-                var listEl = $('<li class="fetch-shape" data-shapeid="' + d.shape_id + '"></li>');
-                listEl.on('click', function(evt) {
-                  var shapeId = evt.currentTarget.dataset.shapeid;
-                  $(this).addClass('active');
-                  $('.fetch-shape').not('.active').addClass('inactive');
-
-                  getShapeData(shapeId);
-                  getStopsForShape(shapeId, function(stopsData) {
-                    var elData = "";
-                    var elData = '<div id="shape-meta"><p>' + stopsData.length + ' stops in xx minutes (est)</p></div>';
-
-                    stopsData.forEach(function(s) {
-                      elData += '<div class="stop-on-shape" data-stopId="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
-                    });
-
-                    $('#shape-info').html(elData).show();
-                  });
-                });
-
-                listEl.html('<strong class="bus-number">' + d.route_short_name + '</strong> ' + d.route_long_name + '</li>');
-                listEls.push(listEl);
+                //var listEl = $('<li class="fetch-shape" data-shapeid="' + d.shape_id + '"></li>');
+                var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
+                optionEls.push(optionEl);
               });
 
-              el.html(listEls);
+              // add the all routes select to the div
+              $('#all-routes-container h2').show();
+              $('#all-routes').html(allRoutesSelect.html(optionEls));
+
+              $('#all-routes select').on('change', function(evt) {
+                var optionSelected = $('option:selected', this);
+                var shapeId = this.value;
+
+                getShapeData(shapeId);
+                  getStopsForShape(shapeId, function(stopsData) {
+                    var elData = "";
+                    var elData = '<div class="header" id="shape-meta">' + stopsData.length + ' stops in xx minutes (est)</div>';
+
+                    stopsData.forEach(function(s) {
+                      var highlightRow = $('#stop-name').text() === s.stop_name ? ' highlight' : '';
+                      elData += '<div class="stop-on-shape' + highlightRow + '" data-stopId="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
+                    });
+                    $('#shape-info h2').show();
+                    $('#shape-info').html(elData).show();
+                  });
+              });
 
               // add Upcoming buses to the Popup
               getServicesInMinutes(stop_id, 5, function(data) {
-                var nextServices = document.getElementById('services-next');
-                var nextFive = data.slice(0, 4);
+                var arrivingSoon = $('#arriving-soon');
+                var arrivingSoonItems = [];
+
                 data.forEach(function(d) {
-                  nextServices.innerHTML += '<div class="service"><strong class="bus-number">' + d.route_id.split('_')[1] + '</strong>' +
-                    ' arr in ' + d.departure_time_mins + 'm (' + d.departure_time.split(':').slice(0,1) + ')</div>';
+                  var arr = (d.departure_time.split(':'));
+                  var depTime = arr[0] + ':' + arr[1];
+                  var li = '<li class="service"><strong class="bus-number">' + d.route_id.split('_')[1] + '</strong>' +
+                    ' arr in ' + d.departure_time_mins + 'm (' + depTime + ')</li>';
+                  arrivingSoonItems.push(li);
                 });
+
+                $('#arriving-soon-container h2').show();
+                arrivingSoon.html(arrivingSoonItems);
+
               });
             });
           });

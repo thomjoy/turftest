@@ -15,6 +15,8 @@ body { margin: 0; padding: 0; }
   background-color: indianred;
 }
 
+.header { font-weight: normal; font-size: 14px; padding: 0; margin: 0; margin-bottom: 5px; color: #3C4E5A; }
+
 #location-info #num-stops { font-weight: bold; }
 #location-info #walking-distance { font-weight: bold; }
 
@@ -23,24 +25,31 @@ body { margin: 0; padding: 0; }
 #stop-distance { font-size: 12px; color: #fff; margin: 0; }
 
 #route-container { padding: 5px; background-color: snow; margin-top: 5px; }
-#route-container #route-info { list-style: none; margin: 0; padding: 0; }
-#route-info li { font-size: 12px; color: #333; padding: 2px 2px; cursor: pointer; }
-#route-info li.active { display: block; }
-#route-info li.inactive { display: none; }
+
+#arriving-soon-container { margin-bottom: 20px; }
+#arriving-soon-container h2 { display: none; }
+#arriving-soon { list-style: none; margin: 0; padding: 0; }
+#arriving-soon li { font-size: 12px; color: #333; padding: 2px 2px; cursor: pointer; }
+#arriving-soon li.active { display: block; }
+#arriving-soon li.inactive { display: none; }
+
+#all-routes-container { margin-bottom: 20px; }
+#all-routes-container h2 { display: none; }
+#all-routes { margin-top: 10px; }
+#all-routes select { width: 260px; }
 
 #shape-container { padding: 5px; }
-#shape-container #shape-info { margin-top: 10px; }
+#shape-container #shape-info { margin-top: 0px; }
 .shape-meta { font-size: 12px; margin: 0; padding-bottom: 4px; color: lightblue; }
-.stop-on-shape { font-size: 11px; padding-top: 4px; padding-bottom:4px; }
+.stop-on-shape { font-size: 11px; padding: 1px 2px; }
 .stop-on-shape:nth-child(odd) { background-color: #eee; }
+.stop-on-shape.highlight { background-color: mediumseagreen; color: #fff; }
 .stop-on-shape strong { display: inline-block; margin-right: 8px; }
 
 .leaflet-popup-content .stop-name { padding-bottom: 8px; display: inline-block; }
 .leaflet-popup-content .stop-id { font-size: 10px; color: #999; }
 
 #service-info { padding-top: 5px; }
-
-
 #service-info div { color: #3C4E5A; font-weight: normal; }
 
 #service-next { }

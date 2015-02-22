@@ -15,9 +15,6 @@ var turf = require('turf');
 var data = require(__dirname + '/gtfs/stops.json');
 var API_DEFAULT_UNIT = 'kilometers';
 
-var moment = require('moment');
-moment().format();
-
 var _ = require('underscore');
 
 // set up middleware
@@ -151,30 +148,31 @@ stops.route('/stops/:stopid/in/:minutes')
           var h = parseInt(date.getHours(), 10);
           var m = parseInt(date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes(), 10);
           var s = parseInt(date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds(), 10);
-
           var dep_time = t.departure_time.split(':');
+          var diff;
+
           console.log('h: ' + h);
           console.log('m: ' + m);
           console.log('s: ' + s);
           console.log("dep_time: " + dep_time);
 
-          // SOMETHING IS removing an hour from the departure time, even though running the query directly works...
-          if(dep_time != 0) dep_time[0]++;
-
-          var diff;
+          // SOMETHING is removing an hour from the departure time, even though running the query directly works...
+          if(dep_time !== 0) dep_time[0]++;
 
           // hours
           if (dep_time[0] == h && dep_time[1] !== m)
             diff = dep_time[1] - m;
+
           // if different hour
           if (dep_time[0] > h)
             diff = 60 - (dep_time[1] - m);
 
-          console.log("DIFF: " + diff + " minutes");
+          //console.log("DIFF: " + diff + " minutes");
 
           t.departure_time = dep_time.join(':');
           t.departure_time_mins = diff;
         });
+
         res.json(trips.rows);
       });
     });
