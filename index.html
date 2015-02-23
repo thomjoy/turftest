@@ -105,7 +105,7 @@
 
     // radius
     var radiusLayer = L.mapbox.featureLayer().addTo(map);
-    var radial = pointRadius(point, .25, 'kilometers', 120);
+    var radialGeoJson = pointRadius(point, .25, 'kilometers', 120);
     var radialStyle = {
       "fill": "#6baed6",
       "fill-opacity": 0.1,
@@ -115,7 +115,15 @@
     };
 
     radial.properties = radialStyle;
-    radiusLayer.setGeoJSON(radial);
+    radiusLayer.setGeoJSON(radialGeoJson, {
+      onEachFeature: function(feature, layer) {
+
+      }
+    });
+
+    radiusLayer.on('click', function(evt) {
+      console.log(evt);
+    });
 
 
     function xhr(options) {
@@ -154,7 +162,7 @@
         "opacity": 1
       };
 
-      // clear previous
+      // clear previous layers
       if( shapeLayer )
         map.removeLayer(shapeLayer);
       if( startEndRouteLayer )
@@ -172,25 +180,67 @@
 
               var circles = [];
               var circleOptions = {
-                color: '#2775DB',      // Stroke color
-                opacity: 0.8,         // Stroke opacity
-                weight: 8,         // Stroke weight
-                fillColor: '#fff',  // Fill color
-                fillOpacity: 0.6    // Fill opacity
+                color: '#2775DB',       // Stroke color
+                opacity: 0.8,           // Stroke opacity
+                weight: 4,              // Stroke weight
+                fillColor: '#fff',      // Fill color
+                fillOpacity: 0.6,       // Fill opacity
+                radius: 5
               };
+              var numStops = (stopsData.length - 1);
 
               // plot stops on shape as circles
-              // create a layer for this
               stopsData.forEach(function(stop) {
-                var c = L.circle([stop.stop_lat, stop.stop_lon], 2, circleOptions);
-                circles.push(c);
-                c.addTo(map);
+                circles.push(L.circleMarker([stop.stop_lat, stop.stop_lon], circleOptions));
               });
 
-              //stopsOnRouteLayer = L.mapbox.featureLayer().addTo(map);
-              //stopsOnRouteLayer.addLayer(circles);
-              //map.addLayer(stopsOnRouteLayer);
-              //console.log(stopsOnRouteLayer);
+              var circlesGeoJson = {
+                type: "FeatureCollection",
+                features: (function() {
+                  return circles.map(function(circle, idx) {
+                    var geojson = circle.toGeoJSON();
+
+                    if( idx == 0 )
+                      geojson.properties.startRoute = true;
+                    if( idx == numStops )
+                      geojson.properties.endRoute = true;
+
+                    geojson.properties.stop_id = stopsData[idx].stop_id;
+                    geojson.properties.title = '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
+                                               '<div>Stop ' + (idx + 1) + ' of ' + (numStops + 1) + '</div>';
+
+                    return geojson;
+                  });
+                })()
+              };
+
+              stopsOnRouteLayer = L.geoJson(circlesGeoJson, {
+                pointToLayer: function (feature, latlng) {
+                  if( feature.properties.startRoute )
+                    circleOptions.color = '#ff0000';
+                  if( feature.properties.endRoute )
+                    circleOptions.color = '#000000';
+                  if( ! (feature.properties.endRoute || feature.properties.startRoute))
+                    circleOptions.color = '#2775DB';
+
+                  return L.circleMarker(latlng, circleOptions);
+                },
+                onEachFeature: function(feature, layer) {
+                  layer.bindPopup(feature.properties.title);
+
+                  layer.on('mouseover', function(evt) {
+                    var stopId = feature.properties.stop_id;
+                    $('#shape-info .stop-on-shape').filter(function() {
+                      return $(this).data('stop_id') == stopId;
+                    }).addClass('match-stop');
+                    layer.openPopup();
+                  });
+
+                  layer.on('mouseout', function(evt) {
+                     $('.match-stop').removeClass('match-stop');
+                  });
+                }
+              }).addTo(map);
             },
             click: function(evt) {
               console.log('Clicked on shape');
@@ -222,7 +272,7 @@
       endPoints[1].properties["title"] = "End";
       endPoints[1].properties["marker-color"] = "a50f15";
 
-      // generate this on the server?
+      // add the start and end of route markers to the map.
       startEndRouteLayer = L.mapbox.featureLayer()
                             .setGeoJSON({ type: "FeatureCollection", features: endPoints });
 
@@ -231,7 +281,7 @@
         marker.openPopup();
       });
 
-      startEndRouteLayer.addTo(map);
+      //startEndRouteLayer.addTo(map);
       shapeLayer.addTo(map);
     }
 
@@ -242,32 +292,27 @@
         map.removeLayer(nearestStopsLayer);
 
       var withinRadius = turf.featurecollection(stopsGeoJson.features.filter(function(stop){
-        if (turf.distance(stop, point, 'kilometers') <= WALKING_DISTANCE) return true;
+        if( turf.distance(stop, point, 'kilometers') <= WALKING_DISTANCE ) return true;
       }));
 
       if( withinRadius.features.length > 0 ) {
         $('#stops-nearby')
-          .html('<span id="num-stops">' + withinRadius.features.length + ' </span>bus stops within <span id="walking-distance">' + WALKING_DISTANCE + 'km</span>');
+          .html('<span id="num-stops">' + withinRadius.features.length + ' </span> stops within <span id="walking-distance">' + WALKING_DISTANCE + 'km</span>');
 
         withinRadius.features.forEach(function(feature){
-            var distance = parseFloat(turf.distance(point, feature, 'kilometers'));
-            var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>' +
-                        '<div id="services-next"></div>' +
-                        '<div id="service-info"></div>';
-
+            var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>';
             feature.properties["marker-color"] = "2775DB";
             feature.properties["title"] = popupContent;
             feature.properties["marker-size"] = "small";
             feature.properties["marker-symbol"] = "bus";
+            feature.properties['marker-opacity'3] = 0.5;
         });
 
         var nearest = turf.nearest(point, withinRadius);
         var nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
         nearest.properties["marker-color"] = "ffffff";
-        nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>' +
-                        '<div id="services-next"></div>' +
-                        '<div id="service-info"></div>';
+        nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>';
         nearest.properties["marker-size"] = "small";
         nearest.properties["marker-symbol"] = "bus";
 
@@ -279,8 +324,11 @@
           var stopId = feature.properties.stop_id;
           var stopName = feature.properties.stop_name;
 
+          // click on a marker within walking distance
           marker.on('click', function(e) {
-            marker.bindPopup(feature.properties.title, {minWidth: 240, maxWidth: 300, closeButton: true});
+            console.log(marker);
+            debugger;
+            marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
             marker.openPopup();
 
             marker.feature.properties['marker-color'] = '3cb371'; //mediumseagreen
@@ -288,7 +336,7 @@
 
             nearestStopsLayer.eachLayer(function(_marker) {
               if(_marker._leaflet_id !== _thismarker._leaflet_id)
-                marker.feature.properties['opacity'] = 0.4;
+                marker.feature.properties['marker-opacity'] = 0.4;
             });
 
             var featureMarker = {
@@ -302,9 +350,7 @@
             var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
             $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
 
-            // clear whatever is in the stops lists for a route
-            //$('#shape-container').hide();
-
+            // Get routes from this stop
             var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stopId}).done(function(stopsResp) {
               var routesFromStop = JSON.parse(stopsResp);
               var allRoutesSelect = $('#all-routes select');
@@ -325,7 +371,6 @@
                 var optionSelected = $('option:selected', this);
                 var shapeId = this.value;
 
-
                 getStopsForShape(shapeId, function(stopsData) {
                   // plot the shape, with stops
                   getShapeData(shapeId, stopsData);
@@ -335,14 +380,14 @@
 
                   stopsData.forEach(function(s) {
                     var highlightRow = $('#stop-name').text() === s.stop_name ? ' highlight' : '';
-                    elData += '<div class="stop-on-shape' + highlightRow + '" data-stopId="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
+                    elData += '<div class="stop-on-shape' + highlightRow + '" data-stop_id="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
                   });
                   $('#shape-info h2').show();
                   $('#shape-info').html(elData).show();
                 });
               });
 
-              // add Upcoming buses to the Popup
+              // add Upcoming buses to the Sidebar
               getServicesInMinutes(stopId, 5, function(arrivingSoonData) {
                 var arrivingSoon = $('#arriving-soon');
                 var arrivingSoonItems = [];

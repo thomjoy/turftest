@@ -44,6 +44,7 @@ body { margin: 0; padding: 0; }
 .stop-on-shape { font-size: 11px; padding: 1px 2px; }
 .stop-on-shape:nth-child(odd) { background-color: #eee; }
 .stop-on-shape.highlight { background-color: mediumseagreen; color: #fff; }
+.stop-on-shape.match-stop { background-color: cornflowerblue; color: #fff;  }
 .stop-on-shape strong { display: inline-block; margin-right: 8px; }
 
 .leaflet-popup-content .stop-name { padding-bottom: 8px; display: inline-block; }
