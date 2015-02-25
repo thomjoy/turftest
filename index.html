@@ -4,59 +4,102 @@
   <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
   <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.3.0/turf.min.js"></script>
   <script src="//code.jquery.com/jquery-2.1.3.js"></script>
+  <script src="semantic-ui/semantic.js"></script>
 
   <script src="//localhost:3000/q.js"></script>
   <script>Q.longStackSupport = true;</script>
 
   <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
   <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
+
   <link href="style.css" rel="stylesheet" />
+  <link href="semantic-ui/semantic.css" rel="stylesheet" />
+  <link href="semantic-ui/components/dropdown.css" />
 
 </head>
 <body>
-  <div class="left">
+  <div class="left ui">
     <h1 id="header">NSW Buses Explorer</h1>
+
+    <!-- radius info -->
     <div id="location-info">
       <div id="stops-nearby"></div>
     </div>
+
+    <!-- selected stop info -->
     <div id="stop-container">
-      <h2 id="stop-name"></h2>
+      <h2 id="stop-name">Click a Stop Marker...</h2>
       <p id="stop-distance"></p>
     </div>
 
+    <!-- routes -->
     <div id="route-container">
-      <div id="arriving-soon-container">
-        <h2 class="header">Arriving Soon</h2>
-        <ul id="arriving-soon"></ul>
+      <!-- Tabbed Menu -->
+      <div class="ui fluid tabular menu">
+        <a class="item active" data-tab="arriving-soon">Arriving Soon</a>
+        <a class="item" data-tab="all-services">All Services</a>
       </div>
 
-      <div id="all-routes-container">
-        <h2 class="header" id="">All routes from this stop</h2>
-        <div id="all-routes">
-          <select></select>
+      <div class="ui tab active" data-tab="arriving-soon" id="arriving-soon-container">
+        <div class="ui segment basic">
+          <ul id="arriving-soon"></ul>
+        </div>
+      </div>
+
+      <div class="ui tab" data-tab="all-services">
+        <div id="all-routes-container">
+          <div class="ui">
+            <div class="ui loader"></div>
+            <select id="route-select" class="ui fluid search selection dropdown"></select>
+          </div>
+        </div>
+        <!-- list of stops on a shape -->
+        <div id="shape-container">
+          <div id="shape-info">
+            <div class="header" id="shape-meta"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div id="shape-container">
-      <div id="shape-info">
-        <div class="header" id="shape-meta"></div>
-      </div>
-    </div>
+
   </div>
-  <div class="right">
-    <div id="map"></div>
+
+  <div class="right init">
+    <div id="map" class="blur init"></div>
   </div>
+  <div id="overlay">
+    <div id="geolocate" class="ui button green">Locate Me!</div>
+  </div>
+
   <script>
     var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
 
     L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
+
+    if (!navigator.geolocation) {
+        geolocate.innerHTML = 'Geolocation is not available';
+        $('#overlay').hide();
+    } else {
+        geolocate.onclick = function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $('#geolocate').html('Locating...');
+            map.locate();
+        };
+    }
+
+    $('.menu .item').tab();
+    $('.ui.dropdown').dropdown();
+
+    var CURRENT_STOP_ID;
 
     // constants
     var WALKING_DISTANCE = 0.25;
 
     // map layers
     var stopsGeoJson;
+    var radiusLayer;
     var shapeLayer;
     var startEndRouteLayer;
     var stopsOnRouteLayer;
@@ -64,11 +107,18 @@
     // global stops layer, needs to be cleared on drag
     var nearestStopsLayer;
 
-    var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0');
-    var baseCoords = new L.latLng(-33.865,151.209);
-    map.setView(baseCoords, 16);
-    L.control.scale().addTo(map);
+    // center of the radial
+    var point;
+    var radialStyle = {
+        "fill": "#6baed6",
+        "fill-opacity": 0.1,
+        "stroke": "#3182bd",
+        "stroke-width": 2,
+        "stroke-opacity": 0.5
+      };
 
+    var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0');
+    var positionMarker;
     var icon = L.mapbox.marker.icon({
       "marker-color": "#8E8E8E",
       "title": "where are the stations?",
@@ -76,12 +126,104 @@
       "marker-size": "small"
     });
 
-    // our draggable icon that will be in the centre of a 0.5 mile radius
-    var positionMarker = L.marker(baseCoords, {
-      icon: icon,
-      draggable: true,
-      zIndexOffset:999
-    }).addTo(map);
+    function createInitialPosition(coords) {
+      return L.marker(coords, {
+        icon: icon,
+        draggable: true,
+        zIndexOffset:999
+      });
+    }
+
+    // Once we've got a position, zoom and center the map
+    // on it, and add a single marker.
+    function kickOff() {
+      map.on('locationfound', function(e) {
+        $('#overlay').hide();
+        if (positionMarker)
+          map.removeLayer(positionMarker);
+
+        positionMarker = createInitialPosition(e.latlng);
+        positionMarker.addTo(map);
+
+        $('#map').removeClass('blur');
+        $('#map').removeClass('init');
+        $('.right').removeClass('init');
+        $('.left').show();
+
+        var pos = [e.latitude,e.longitude];
+        map.setView(pos, 16);
+
+        initApp(positionMarker.getLatLng());
+      });
+
+      // If the user chooses not to allow their location
+      // to be shared, display an error message.
+      map.on('locationerror', function() {
+        $('#map').removeClass('blur');
+        geolocate.innerHTML = 'Position could not be found';
+        if (positionMarker)
+          map.removeLayer(positionMarker);
+
+        var defaultPos = [-33.865,151.209]
+        positionMarker = createInitialPosition(defaultPos)
+        positionMarker.addTo(map);
+        map.setView(defaultPos, 15);
+
+        initApp(positionMarker.getLatLng());
+      });
+    };
+
+    function initApp(pos) {
+      createRadiusLayer({lat: pos.lat, lng: pos.lng});
+
+      // event handlers
+      positionMarker.on('drag', function(evt) {
+        var lat = this.getLatLng()['lat'];
+        var lon = this.getLatLng()['lng'];
+
+        // clear the sidebar
+        $('#route-info').empty();
+        $('#stop-container').hide();
+        $('#route-container').hide();
+
+        // global
+        point = turf.point(lon, lat);
+        radialGeoJson = pointRadius(point, WALKING_DISTANCE, 'kilometers', 120);
+        radialGeoJson.properties = radialStyle;
+        radiusLayer.setGeoJSON(radialGeoJson);
+
+        calcStopsInRadius();
+      });
+
+      positionMarker.on('click', function(evt){
+        if (! map.hasLayer(radiusLayer))
+          map.addLayer(radiusLayer);
+        if (! map.hasLayer(nearestStopsLayer))
+          map.addLayer(nearestStopsLayer);
+      });
+
+      // kick everything else off
+      getStopsData();
+    };
+
+    function createRadiusLayer(aroundPoint) {
+      // the center of the radial, initially.
+      point = turf.point(aroundPoint.lng, aroundPoint.lat);
+
+      // radius
+      radiusLayer = L.mapbox.featureLayer().addTo(map);
+      radialGeoJson = pointRadius(point, .25, 'kilometers', 120);
+      radialGeoJson.properties = radialStyle;
+      radiusLayer.setGeoJSON(radialGeoJson, {
+        onEachFeature: function(feature, layer) {
+
+        }
+      });
+
+      radiusLayer.on('click', function(evt) {
+        console.log(evt);
+      });
+    }
 
     // some utility functions
     function pointRadius(pt, radius, units, resolution) {
@@ -99,32 +241,6 @@
 
       return turf.polygon([ring])
     }
-
-    // the center of the radial, initially.
-    var point = turf.point(151.209, -33.865);
-
-    // radius
-    var radiusLayer = L.mapbox.featureLayer().addTo(map);
-    var radialGeoJson = pointRadius(point, .25, 'kilometers', 120);
-    var radialStyle = {
-      "fill": "#6baed6",
-      "fill-opacity": 0.1,
-      "stroke": "#3182bd",
-      "stroke-width": 2,
-      "stroke-opacity": 0.5
-    };
-
-    radial.properties = radialStyle;
-    radiusLayer.setGeoJSON(radialGeoJson, {
-      onEachFeature: function(feature, layer) {
-
-      }
-    });
-
-    radiusLayer.on('click', function(evt) {
-      console.log(evt);
-    });
-
 
     function xhr(options) {
       var deferred = Q.defer(),
@@ -181,11 +297,11 @@
               var circles = [];
               var circleOptions = {
                 color: '#2775DB',       // Stroke color
-                opacity: 0.8,           // Stroke opacity
-                weight: 4,              // Stroke weight
+                opacity: 1,           // Stroke opacity
+                weight: 3,              // Stroke weight
                 fillColor: '#fff',      // Fill color
-                fillOpacity: 0.6,       // Fill opacity
-                radius: 5
+                fillOpacity: 1,       // Fill opacity
+                radius: 4
               };
               var numStops = (stopsData.length - 1);
 
@@ -204,6 +320,8 @@
                       geojson.properties.startRoute = true;
                     if( idx == numStops )
                       geojson.properties.endRoute = true;
+                    if( stopsData[idx].stop_id == CURRENT_STOP_ID )
+                      geojson.properties.currentSelectedStop = true
 
                     geojson.properties.stop_id = stopsData[idx].stop_id;
                     geojson.properties.title = '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
@@ -217,10 +335,12 @@
               stopsOnRouteLayer = L.geoJson(circlesGeoJson, {
                 pointToLayer: function (feature, latlng) {
                   if( feature.properties.startRoute )
-                    circleOptions.color = '#ff0000';
+                    circleOptions.color = '#3cb371'; //mediumseagreen
                   if( feature.properties.endRoute )
-                    circleOptions.color = '#000000';
-                  if( ! (feature.properties.endRoute || feature.properties.startRoute))
+                    circleOptions.color = '#cd5c5c'; //indianred
+                  if( feature.properties.currentSelectedStop )
+                    circleOptions.color = '#9370DB'; // mediumpurple
+                  if( ! (feature.properties.endRoute || feature.properties.startRoute || feature.properties.currentSelectedStop))
                     circleOptions.color = '#2775DB';
 
                   return L.circleMarker(latlng, circleOptions);
@@ -250,6 +370,7 @@
         }
       });
 
+      // might be able to remove
       function generateMarkerGeoJson(coords) {
         return {
           type: "Feature",
@@ -265,23 +386,7 @@
         }
       }
 
-      var c = shapeData.geometry.coordinates;
-      var endPoints = [generateMarkerGeoJson(c[0]), generateMarkerGeoJson(c[c.length-1])];
-      endPoints[0].properties["title"] = "Start";
-      endPoints[0].properties["marker-color"] = "31a354";
-      endPoints[1].properties["title"] = "End";
-      endPoints[1].properties["marker-color"] = "a50f15";
-
-      // add the start and end of route markers to the map.
-      startEndRouteLayer = L.mapbox.featureLayer()
-                            .setGeoJSON({ type: "FeatureCollection", features: endPoints });
-
-      startEndRouteLayer.eachLayer(function(marker) {
-        marker.bindPopup(marker.feature.properties.title);
-        marker.openPopup();
-      });
-
-      //startEndRouteLayer.addTo(map);
+      map.removeLayer(nearestStopsLayer);
       shapeLayer.addTo(map);
     }
 
@@ -299,19 +404,20 @@
         $('#stops-nearby')
           .html('<span id="num-stops">' + withinRadius.features.length + ' </span> stops within <span id="walking-distance">' + WALKING_DISTANCE + 'km</span>');
 
+        $('#location-info').slideDown();
+
         withinRadius.features.forEach(function(feature){
             var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>';
             feature.properties["marker-color"] = "2775DB";
             feature.properties["title"] = popupContent;
             feature.properties["marker-size"] = "small";
             feature.properties["marker-symbol"] = "bus";
-            feature.properties['marker-opacity'3] = 0.5;
         });
 
         var nearest = turf.nearest(point, withinRadius);
         var nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
-        nearest.properties["marker-color"] = "ffffff";
+        nearest.properties["marker-color"] = "093d7c";
         nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>';
         nearest.properties["marker-size"] = "small";
         nearest.properties["marker-symbol"] = "bus";
@@ -320,24 +426,35 @@
                             .setGeoJSON(turf.featurecollection([withinRadius, nearest]));
 
         nearestStopsLayer.eachLayer(function(marker) {
-          var feature = marker.feature;
-          var stopId = feature.properties.stop_id;
-          var stopName = feature.properties.stop_name;
+          var feature = marker.feature,
+              stopId = feature.properties.stop_id,
+              stopName = feature.properties.stop_name;
 
           // click on a marker within walking distance
           marker.on('click', function(e) {
-            console.log(marker);
-            debugger;
-            marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
-            marker.openPopup();
+            var highLightedStopIcon = {
+              "marker-color": "9370D8",
+              "marker-size": "small",
+              "marker-symbol": "bus",
+            };
 
-            marker.feature.properties['marker-color'] = '3cb371'; //mediumseagreen
+            var standardIcon = {
+              "marker-color": "2775DB",
+              "marker-size": "small",
+              "marker-symbol": "bus",
+              "opacity": 0.5
+            };
+
+            CURRENT_STOP_ID = stopId;
             var _thismarker = marker;
-
             nearestStopsLayer.eachLayer(function(_marker) {
               if(_marker._leaflet_id !== _thismarker._leaflet_id)
-                marker.feature.properties['marker-opacity'] = 0.4;
+                _marker.setIcon(L.mapbox.marker.icon(standardIcon));
             });
+
+            marker.setIcon(L.mapbox.marker.icon(highLightedStopIcon));
+            marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
+            marker.openPopup();
 
             var featureMarker = {
               type: "Feature",
@@ -353,10 +470,11 @@
             // Get routes from this stop
             var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stopId}).done(function(stopsResp) {
               var routesFromStop = JSON.parse(stopsResp);
-              var allRoutesSelect = $('#all-routes select');
+              var allRoutesSelect = $('#route-select');
               var optionEls = [];
 
               $('#stop-name').html(stopName);
+              $('#stop-container').show();
 
               routesFromStop.forEach(function(d) {
                 var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
@@ -364,10 +482,10 @@
               });
 
               // add the all routes select to the div
-              $('#all-routes-container h2').show();
               $('#all-routes').html(allRoutesSelect.html(optionEls));
+              $('#route-container').show();
 
-              $('#all-routes select').on('change', function(evt) {
+              allRoutesSelect.on('change', function(evt) {
                 var optionSelected = $('option:selected', this);
                 var shapeId = this.value;
 
@@ -389,19 +507,41 @@
 
               // add Upcoming buses to the Sidebar
               getServicesInMinutes(stopId, 5, function(arrivingSoonData) {
-                var arrivingSoon = $('#arriving-soon');
-                var arrivingSoonItems = [];
+                var arrivingSoon = $('#arriving-soon'),
+                    segment = $('.segment', '#arriving-soon-container'),
+                    arrivingSoonItems = [];
 
-                arrivingSoonData.forEach(function(d) {
-                  var arr = (d.departure_time.split(':'));
-                  var depTime = arr[0] + ':' + arr[1];
-                  var li = '<li class="service"><strong class="bus-number">' + d.route_id.split('_')[1] + '</strong>' +
-                    ' arr in ' + d.departure_time_mins + 'm (' + depTime + ')</li>';
-                  arrivingSoonItems.push(li);
-                });
+                segment.addClass('loading');
 
-                $('#arriving-soon-container h2').show();
+                if( ! Object.keys(arrivingSoonData).length ) {
+                  var html = '<li class="service-outer no-service">No Services ' +
+                            '<div id="find-later" class="later"> find later</div></li>'
+                  arrivingSoonItems.push(html);
+                }
+                else {
+                  for( arrivalTimeInMinutes in arrivingSoonData )
+                  {
+                    var grouped = arrivingSoonData[arrivalTimeInMinutes],
+                        arr = grouped[0].departure_time.split(':'),
+                        depTime = arr[0] + ':' + arr[1];
+
+                    var htmlItem = '<li class="service-outer">' +
+                              '<div class="time-segment">Arrives in ' + arrivalTimeInMinutes + 'm (' + depTime + ')</div>' +
+                              '<ul>';
+
+                    grouped.forEach(function(service) {
+                      console.log(service);
+                      htmlItem += '<li class="service"><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong> ' + service.trip_headsign;
+                    });
+
+                    htmlItem += '</ul></li>';
+                    arrivingSoonItems.push(htmlItem);
+                  }
+                }
+
+                setTimeout(function() { segment.removeClass('loading'); }, 500);
                 arrivingSoon.html(arrivingSoonItems);
+
               });
             });
           });
@@ -441,25 +581,7 @@
       });
     }
 
-    // event handlers
-    positionMarker.on('drag', function(evt) {
-      var lat = this.getLatLng()['lat'];
-      var lon = this.getLatLng()['lng'];
-
-      // clear the sidebar
-      $('#route-info').empty();
-
-      // global
-      point = turf.point(lon, lat);
-      var radial = pointRadius(point, WALKING_DISTANCE, 'kilometers', 120);
-      radial.properties = radialStyle;
-      radiusLayer.setGeoJSON(radial);
-
-      calcStopsInRadius();
-    });
-
-    // go
-    getStopsData();
+    kickOff();
   </script>
 </body>
 </html>

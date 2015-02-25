@@ -38,11 +38,30 @@ FROM trips
 JOIN routes on trips.route_id = routes.route_id
 WHERE trip_id IN (SELECT DISTINCT trip_id FROM stop_times WHERE stop_id = 200076);
 
-SELECT * FROM shapes WHERE shape_id = 157535;
+SELECT *
+FROM shapes 
+WHERE shape_id = 157535;
+
+/* view for populating the 'arriving soon' tab */
+SELECT t.route_id, t.service_id, t.trip_id, t.trip_headsign, t.direction_id 
+FROM trips t
+JOIN routes r ON r.route_id = t.route_id
+
+CREATE TABLE calendar 
+(service_id int, monday int, tuesday int, wednesday int, thursday int, friday int, saturday int, sunday int, start_date date, end_date date);
+COPY calendar FROM '/Users/thomjoy/code/turftest/gtfs/calendar.txt' DELIMITER ',' CSV;
 
 
-SELECT st.trip_id, st.departure_time, t.route_id, now()
-FROM stop_times st 
+SELECT r.route_id, t.trip_id, t.service_id, c.monday, c.tuesday, c.wednesday, c.thursday, c.friday, c.saturday, c.sunday
+FROM trips t
+JOIN routes r ON r.route_id = t.route_id
+JOIN calendar c ON c.service_id = t.service_id
+WHERE r.route_id = '11954_639' 
+
+SELECT 
+FROM routes 
+SELECT st.trip_id, st.departure_time, t.route_id
+FROM stop_times st
 JOIN trips t ON t.trip_id = st.trip_id
 WHERE st.stop_id = 200077
 AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '5 minute') 
@@ -51,7 +70,7 @@ ORDER BY st.departure_time ASC
 
 SELECT date_trunc('minute', '14:30'::time without time zone) - date_trunc('minute', now()::time without time zone) < INTERVAL '5 minute'
 
-SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time
+SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time, s.stop_lat, s.stop_lon
 FROM stop_times st
 JOIN stops s ON s.stop_id = st.stop_id
 WHERE trip_id = (SELECT trip_id FROM trips WHERE shape_id = '156786' LIMIT 1)

@@ -16,6 +16,7 @@ var data = require(__dirname + '/gtfs/stops.json');
 var API_DEFAULT_UNIT = 'kilometers';
 
 var _ = require('underscore');
+var dayMap = {0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday'};
 
 // set up middleware
 stops.use(cors());
@@ -124,15 +125,21 @@ stops.route('/stops/:stopid')
 
 stops.route('/stops/:stopid/in/:minutes')
   .get(function(req, res) {
-    var query = "SELECT DISTINCT st.trip_id, st.departure_time, t.route_id" +
+    var date = new Date();
+    var dateQuery = " (SELECT service_id FROM calendar WHERE " + dayMap[date.getDay()] + " = 1)";
+
+    var query = "SELECT DISTINCT st.trip_id, st.departure_time, t.route_id, t.shape_id, t.trip_headsign" +
     " FROM stop_times st" +
     " JOIN trips t ON t.trip_id = st.trip_id" +
-    " WHERE st.stop_id = $1" +
+    " JOIN calendar c ON c.service_id = t.service_id" +
+    " WHERE st.stop_id = $1"+
+    " AND t.service_id IN" + dateQuery +
     " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '5 minute')" +
     " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute')" +
     " ORDER BY st.departure_time ASC";
     var params = [req.stopid];
 
+    console.log('Day: ' + date.getDay());
     console.log("Stop ID: " + req.stopid);
     console.log("Minutes: " + req.minutes);
 
@@ -144,17 +151,16 @@ stops.route('/stops/:stopid/in/:minutes')
         if( err ) pgErrHandler(err);
 
         trips.rows.forEach(function(t) {
-          var date = new Date();
           var h = parseInt(date.getHours(), 10);
           var m = parseInt(date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes(), 10);
           var s = parseInt(date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds(), 10);
           var dep_time = t.departure_time.split(':');
           var diff;
 
-          console.log('h: ' + h);
-          console.log('m: ' + m);
-          console.log('s: ' + s);
-          console.log("dep_time: " + dep_time);
+          //console.log('h: ' + h);
+          //console.log('m: ' + m);
+          //console.log('s: ' + s);
+          //console.log("dep_time: " + dep_time);
 
           // SOMETHING is removing an hour from the departure time, even though running the query directly works...
           if(dep_time !== 0) dep_time[0]++;
@@ -167,13 +173,11 @@ stops.route('/stops/:stopid/in/:minutes')
           if (dep_time[0] > h)
             diff = 60 - (dep_time[1] - m);
 
-          //console.log("DIFF: " + diff + " minutes");
-
           t.departure_time = dep_time.join(':');
           t.departure_time_mins = diff;
         });
 
-        res.json(trips.rows);
+        res.json(_.groupBy(trips.rows, 'departure_time_mins'));
       });
     });
   });
@@ -183,6 +187,8 @@ stops.route('/shapes/:shapeid')
     var shapeid = req.shapeid;
     console.log('Shape ID: ' + shapeid);
 
+    // this needs to be date/time aware
+    // show the shape for the current route/trip_id for the
     var query = "SELECT * " +
     "FROM shapes " +
     "WHERE shape_id = $1";

@@ -1,9 +1,23 @@
 * { font-family: 'Open Sans'; }
 body { margin: 0; padding: 0; }
 
-.left { min-height: 1024px; padding: 0; margin: 0; overflow: hidden; width: 18%; float: left; }
+.left { min-height: 1024px; padding: 0; margin: 0; overflow: hidden; width: 18%; float: left; display: none; }
 .right { padding:0; margin: 0; overflow: hidden; width: 82%; float: right;}
+.right.init { width: 100%; }
+
+#overlay { position: absolute; left: 0; width: 100%; min-height: 1024px; height: 100%; background-color: transparent; opacity: 1; }
+
+#geolocate {
+  margin: 0;
+  position: absolute;
+  top: 48%;
+  left: 48%;
+}
+
 #map { width: 100%; min-height: 1024px; height: 100%; }
+.init { width: 100%; height: 100%; }
+.blur { -webkit-filter: blur(5px); }
+
 #header { margin: 0; padding: 15px 5px; font-size: 21px; font-weight: normal; color: #fff; background-color: #3C4E5A; }
 
 #location-info {
@@ -12,7 +26,9 @@ body { margin: 0; padding: 0; }
   padding-bottom: 8px;
   font-size: 12px;
   color: #fff;
-  background-color: indianred;
+  background-color: #4690f2;
+  border-bottom: 1px solid #1f70d3;
+  display: none;
 }
 
 .header { font-weight: normal; font-size: 14px; padding: 0; margin: 0; margin-bottom: 5px; color: #3C4E5A; }
@@ -20,30 +36,44 @@ body { margin: 0; padding: 0; }
 #location-info #num-stops { font-weight: bold; }
 #location-info #walking-distance { font-weight: bold; }
 
-#stop-container { padding: 5px; padding-top: 10px; padding-bottom: 10px; background-color: mediumseagreen; }
-#stop-name { font-size: 16px; color: #fff; margin: 0; }
-#stop-distance { font-size: 12px; color: #fff; margin: 0; }
+#stop-container {
+  height: 56px;
+  background: mediumpurple url('stop-icon-white-m.png') 4 9 no-repeat;
+  border-bottom: 1px solid purple;
+  padding: 5px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: none;
+}
+#stop-name { font-size: 16px; color: #fff; margin: 0; padding-left: 34px; }
+#stop-distance { font-size: 12px; color: #fff; margin: 0; padding-left: 34px; }
 
-#route-container { padding: 5px; background-color: snow; margin-top: 5px; }
+#route-container { padding: 5px; background-color: snow; margin-top: 5px; display: none; }
 
 #arriving-soon-container { margin-bottom: 20px; }
-#arriving-soon-container h2 { display: none; }
 #arriving-soon { list-style: none; margin: 0; padding: 0; }
-#arriving-soon li { font-size: 12px; color: #333; padding: 2px 2px; cursor: pointer; }
-#arriving-soon li.active { display: block; }
-#arriving-soon li.inactive { display: none; }
+.service-outer { padding-bottom: 20px; }
+.service-outer .time-segment {
+  padding-bottom: 10px;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #777;
+}
+.service-outer ul { list-style-type: none; padding: 0; margin: 0; }
+.service-outer ul li { font-size: 14px; color: #333; padding: 2px 2px; cursor: pointer; }
+.service-outer ul li .bus-number{ background: #2775DB; display: inline-block; color: #fff; padding: 1px 2px; }
 
-#all-routes-container { margin-bottom: 20px; }
+/*#all-routes-container { margin-bottom: 20px; }
 #all-routes-container h2 { display: none; }
 #all-routes { margin-top: 10px; }
-#all-routes select { width: 260px; }
+/*#all-routes select { width: 260px; }*/
 
 #shape-container { padding: 5px; }
 #shape-container #shape-info { margin-top: 0px; }
 .shape-meta { font-size: 12px; margin: 0; padding-bottom: 4px; color: lightblue; }
 .stop-on-shape { font-size: 11px; padding: 1px 2px; }
 .stop-on-shape:nth-child(odd) { background-color: #eee; }
-.stop-on-shape.highlight { background-color: mediumseagreen; color: #fff; }
+.stop-on-shape.highlight { background-color: mediumpurple; color: #fff; }
 .stop-on-shape.match-stop { background-color: cornflowerblue; color: #fff;  }
 .stop-on-shape strong { display: inline-block; margin-right: 8px; }
 
@@ -52,8 +82,3 @@ body { margin: 0; padding: 0; }
 
 #service-info { padding-top: 5px; }
 #service-info div { color: #3C4E5A; font-weight: normal; }
-
-#service-next { }
-.service { padding-top: 1px; padding-bottom: 1px; }
-.bus-number{ background: #2775DB; display: inline-block; color: #fff; padding: 1px 2px; }
-.service .bus-number.mbus { background: red; }
