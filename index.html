@@ -477,6 +477,7 @@
               $('#stop-container').show();
 
               routesFromStop.forEach(function(d) {
+                console.log(d);
                 var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
                 optionEls.push(optionEl);
               });
@@ -489,9 +490,9 @@
                 var optionSelected = $('option:selected', this);
                 var shapeId = this.value;
 
-                getStopsForShape(shapeId, function(stopsData) {
+                getStopsForShape({shape_id: shapeId}, function(stopsData) {
                   // plot the shape, with stops
-                  getShapeData(shapeId, stopsData);
+                  getShapeData({shape_id: shapeId}, stopsData);
 
                   var elData = "";
                   var elData = '<div class="header" id="shape-meta">' + stopsData.length + ' stops in xx minutes (est)</div>';
@@ -531,7 +532,13 @@
 
                     grouped.forEach(function(service) {
                       console.log(service);
-                      htmlItem += '<li class="service"><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong> ' + service.trip_headsign;
+                      var str = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
+                      htmlItem += '<li class="service">' +
+                                  '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong> ' + service.trip_headsign + '</div>' +
+                                  str +
+                                  '</li>';
+
+
                     });
 
                     htmlItem += '</ul></li>';
@@ -541,6 +548,14 @@
 
                 setTimeout(function() { segment.removeClass('loading'); }, 500);
                 arrivingSoon.html(arrivingSoonItems);
+
+                $('.show-route').on('click', function(evt) {
+                  var tripId = $(this).data('trip_id');
+                  getStopsForShape({trip_id: tripId}, function(stopsData) {
+                    // plot the shape, with stops
+                    getShapeData({trip_id: tripId}, stopsData);
+                  });
+                });
 
               });
             });
@@ -559,8 +574,27 @@
       });
     };
 
-    function getShapeData(shapeId, stopsData) {
-      var prm = xhr({url:'http://127.0.0.1:3001/shapes/' + shapeId});
+    function getStopsForShape(opts, cb) {
+      var endpoint = 'http://127.0.0.1:3001/trip?idType=';
+      if(opts.shape_id)
+        endpoint += 'shape_id&id=' + opts.shape_id;
+      if(opts.trip_id)
+        endpoint += 'trip_id&id=' + opts.trip_id;
+
+      var prm = xhr({url: endpoint});
+      prm.done(function(stops) {
+        cb(JSON.parse(stops));
+      });
+    }
+
+    function getShapeData(opts, stopsData) {
+      var endpoint = 'http://127.0.0.1:3001/shapes?idType=';
+      if(opts.shape_id)
+        endpoint += 'shape_id&id=' + opts.shape_id;
+      if(opts.trip_id)
+        endpoint += 'trip_id&id=' + opts.trip_id;
+
+      var prm = xhr({url: endpoint});
       prm.done(function(geojson) {
         var geojson = JSON.parse(geojson);
         addShapeLayer(geojson, stopsData);
@@ -574,12 +608,7 @@
       });
     }
 
-    function getStopsForShape(shapeId, cb) {
-      var prm = xhr({url:'http://127.0.0.1:3001/stops/along/' + shapeId});
-      prm.done(function(stops) {
-        cb(JSON.parse(stops));
-      });
-    }
+
 
     kickOff();
   </script>
