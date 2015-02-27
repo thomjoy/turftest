@@ -51,29 +51,55 @@ CREATE TABLE calendar
 (service_id int, monday int, tuesday int, wednesday int, thursday int, friday int, saturday int, sunday int, start_date date, end_date date);
 COPY calendar FROM '/Users/thomjoy/code/turftest/gtfs/calendar.txt' DELIMITER ',' CSV;
 
-
-SELECT r.route_id, t.trip_id, t.service_id, c.monday, c.tuesday, c.wednesday, c.thursday, c.friday, c.saturday, c.sunday
+SELECT r.route_id, t.trip_id, t.service_id, t.shape_id, c.monday, c.tuesday, c.wednesday, c.thursday, c.friday, c.saturday, c.sunday
 FROM trips t
 JOIN routes r ON r.route_id = t.route_id
 JOIN calendar c ON c.service_id = t.service_id
-WHERE r.route_id = '11954_639' 
+WHERE t.service_id IN (SELECT c1.service_id
+FROM calendar c1
+WHERE c1.wednesday = 1)
 
-SELECT 
-FROM routes 
-SELECT st.trip_id, st.departure_time, t.route_id
+/* get service_id's that run on tuesday */
+SELECT c.service_id
+FROM calendar c
+WHERE c.tuesday = 1
+
+/* get recently arriving services from a stop */
+SELECT st.trip_id, st.departure_time, t.route_id, t.shape_id, t.trip_headsign
 FROM stop_times st
 JOIN trips t ON t.trip_id = st.trip_id
+JOIN calendar c ON c.service_id = t.service_id
 WHERE st.stop_id = 200077
+AND t.service_id IN (SELECT c1.service_id
+FROM calendar c1
+WHERE c1.wednesday = 1)
 AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '5 minute') 
 AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute') 
 ORDER BY st.departure_time ASC
 
 SELECT date_trunc('minute', '14:30'::time without time zone) - date_trunc('minute', now()::time without time zone) < INTERVAL '5 minute'
 
-SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time, s.stop_lat, s.stop_lon
+SELECT DISTINCT t.trip_id, t.route_id, t.shape_id, st.stop_id, s.stop_name, st.stop_sequence, st.arrival_time, st.departure_time, s.stop_lat, s.stop_lon, c.wednesday, t.direction_id
 FROM stop_times st
 JOIN stops s ON s.stop_id = st.stop_id
-WHERE trip_id = (SELECT trip_id FROM trips WHERE shape_id = '156786' LIMIT 1)
-ORDER BY st.stop_sequence;
+JOIN trips t ON t.trip_id = st.trip_id
+JOIN calendar c ON c.service_id = t.service_id
+WHERE t.route_id IN (
+	SELECT route_id 
+	FROM trips 
+	WHERE route_id = '11954_333'
+	)
+AND t.service_id IN (
+	SELECT c1.service_id
+	FROM calendar c1
+	WHERE c1.wednesday = 1
+	)
+AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute') 
+AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute') 
+ORDER BY t.direction_id, st.stop_sequence;
+
+SELECT *
+FROM shapes 
+WHERE shape_id = 
 
 SELECT greatest(-'1 hour'::interval, '1 hour'::interval);
