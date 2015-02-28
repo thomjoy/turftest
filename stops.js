@@ -182,17 +182,29 @@ stops.route('/stops/:stopid/in/:minutes')
     });
   });
 
-stops.route('/shapes/:shapeid')
+stops.route('/shapes')
   .get(function(req, res) {
-    var shapeid = req.shapeid;
-    console.log('Shape ID: ' + shapeid);
+    var idType  = req.query.idType;
+    var id = req.query.id;
+
+    var whereClause;
+    if( idType === 'shape_id')
+      whereClause = " WHERE s.shape_id = $1";
+    if( idType == 'trip_id' )
+      whereClause = " WHERE t.trip_id = $1";
+
+    console.log(req.query);
+    console.log(whereClause);
+    console.log('ID Type: ' + req.query.idType);
+    console.log('ID: ' + req.query.id);
 
     // this needs to be date/time aware
-    // show the shape for the current route/trip_id for the
     var query = "SELECT * " +
-    "FROM shapes " +
-    "WHERE shape_id = $1";
-    var params = [shapeid];
+    " FROM shapes s" +
+    " JOIN trips t ON t.shape_id = s.shape_id" +
+    whereClause;
+
+    var params = [req.query.id];
 
     pg.connect(connString, function(err, client, done) {
       done();
@@ -202,6 +214,8 @@ stops.route('/shapes/:shapeid')
         if( err ) pgErrHandler(err);
 
         var shapes = shape.rows;
+        var shapeid = shapes[0].shape_id;
+
         var shapeGeoJson = {
           type: "Feature",
           bbox: (function() {
@@ -227,17 +241,33 @@ stops.route('/shapes/:shapeid')
     });
   });
 
-// this will sometimes be wrong, as shape != route != trip (can be fewer/more stops etc...)
-// for now though, it's fine
-stops.route('/stops/along/:shapeid')
+
+stops.route('/trip')
   .get(function(req, res) {
-    var shapeid = req.shapeid;
-    var query = 'SELECT st.stop_id, s.stop_name, st.arrival_time, st.departure_time, s.stop_lat, s.stop_lon' +
-    ' FROM stop_times st' +
-    ' JOIN stops s ON s.stop_id = st.stop_id' +
-    ' WHERE trip_id = (SELECT trip_id FROM trips WHERE shape_id = $1 LIMIT 1)' +
-    ' ORDER BY st.stop_sequence;';
-    var params = [shapeid];
+    console.log(req.query);
+    var idType  = req.query.idType;
+    var id = req.query.id;
+    var whereClause;
+    var date = new Date();
+
+    if( idType === 'shape_id' )
+      whereClause = " WHERE s.shape_id = $1";
+    if( idType == 'trip_id' )
+      whereClause = " WHERE t.trip_id = $1";
+
+    var dateQuery = " (SELECT service_id FROM calendar WHERE " + dayMap[date.getDay()] + " = 1)";
+    var query = " SELECT DISTINCT t.trip_id, t.route_id, t.shape_id, st.stop_id, s.stop_name, st.stop_sequence, st.arrival_time, st.departure_time, s.stop_lat, s.stop_lon, t.direction_id" +
+    " FROM stop_times st" +
+    " JOIN stops s ON s.stop_id = st.stop_id" +
+    " JOIN trips t ON t.trip_id = st.trip_id" +
+    " JOIN calendar c ON c.service_id = t.service_id" +
+    whereClause +
+    " AND t.service_id IN " + dateQuery +
+    //" AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '5 minute')" +
+    //" AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute')" +
+    " ORDER BY t.direction_id, st.stop_sequence;";
+
+    var params = [req.query.id];
 
     pg.connect(connString, function(err, client, done) {
       done();

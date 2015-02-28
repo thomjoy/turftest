@@ -82,3 +82,8 @@ body { margin: 0; padding: 0; }
 
 #service-info { padding-top: 5px; }
 #service-info div { color: #3C4E5A; font-weight: normal; }
+.service .show-route {
+  font-size: 11px;
+  margin-left: 33px;
+  color: darkgray;
+}
