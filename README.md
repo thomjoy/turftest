@@ -9,8 +9,6 @@ Playing around with turf.js
 - double click to move the 'you' marker to anywhere on the map
 - show all routes from a stop (different colour polylines?)
 - add geocoding - i.e. move marker by typing an address
-- get geolocation working
-- how to get gps access on a mobile device?
 - can we get traffic data?
 - given a location (say, from using the directions api) can we find the best bus stop?
 - can we filter out stops in radius which are the end of a route?
