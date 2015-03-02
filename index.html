@@ -534,7 +534,7 @@
                       console.log(service);
                       var str = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
                       htmlItem += '<li class="service">' +
-                                  '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong> ' + service.trip_headsign + '</div>' +
+                                  '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong><div class="bus-headsign">' + service.trip_headsign + '</div></div>' +
                                   str +
                                   '</li>';
 
