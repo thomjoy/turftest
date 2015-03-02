@@ -215,14 +215,9 @@
       radialGeoJson = pointRadius(point, .25, 'kilometers', 120);
       radialGeoJson.properties = radialStyle;
       radiusLayer.setGeoJSON(radialGeoJson, {
-        onEachFeature: function(feature, layer) {
-
-        }
+        onEachFeature: function(feature, layer) { }
       });
-
-      radiusLayer.on('click', function(evt) {
-        console.log(evt);
-      });
+      radiusLayer.on('click', function(evt) { console.log(evt); });
     }
 
     // some utility functions
@@ -254,11 +249,8 @@
       });
 
       req.onreadystatechange = function(e) {
-        if(req.readyState !== 4) {
-          return;
-        }
-
-        if([200,304].indexOf(req.status) === -1) {
+        if( req.readyState !== 4 ) { return; }
+        if( [200,304].indexOf(req.status) === -1 ) {
           deferred.reject(new Error('Server responded with a status of ' + req.status));
         }
         else {
@@ -267,7 +259,6 @@
       };
 
       req.send(options.data || void 0);
-
       return deferred.promise;
     }
 
@@ -294,16 +285,16 @@
             add: function() {
               map.fitBounds(shapeLayer.getBounds());
 
-              var circles = [];
-              var circleOptions = {
-                color: '#2775DB',       // Stroke color
-                opacity: 1,           // Stroke opacity
-                weight: 3,              // Stroke weight
-                fillColor: '#fff',      // Fill color
-                fillOpacity: 1,       // Fill opacity
-                radius: 4
-              };
-              var numStops = (stopsData.length - 1);
+              var circles = [],
+                  circleOptions = {
+                    color: '#2775DB',       // Stroke color
+                    opacity: 1,           // Stroke opacity
+                    weight: 3,              // Stroke weight
+                    fillColor: '#fff',      // Fill color
+                    fillOpacity: 1,       // Fill opacity
+                    radius: 4
+                  },
+                  numStops = (stopsData.length - 1);
 
               // plot stops on shape as circles
               stopsData.forEach(function(stop) {
@@ -531,14 +522,11 @@
                               '<ul>';
 
                     grouped.forEach(function(service) {
-                      console.log(service);
                       var str = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
                       htmlItem += '<li class="service">' +
                                   '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong><div class="bus-headsign">' + service.trip_headsign + '</div></div>' +
                                   str +
                                   '</li>';
-
-
                     });
 
                     htmlItem += '</ul></li>';
@@ -551,12 +539,14 @@
 
                 $('.show-route').on('click', function(evt) {
                   var tripId = $(this).data('trip_id');
+                  $(this).toggleClass('active');
+                  $(this).html($(this).hasClass('active') ? 'hide route' : 'show route');
+
                   getStopsForShape({trip_id: tripId}, function(stopsData) {
                     // plot the shape, with stops
                     getShapeData({trip_id: tripId}, stopsData);
                   });
                 });
-
               });
             });
           });
