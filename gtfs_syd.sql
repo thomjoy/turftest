@@ -135,12 +135,23 @@ SELECT s.stop_name, s.stop_lat, s.stop_lon, st.departure_time
 	AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute') 
 	AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute') 
 	
-SELECT s.stop_name, s.stop_lat, s.stop_lon, st.departure_time 
+SELECT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.departure_time 
 FROM stops s 
 JOIN stop_times st ON st.stop_id = s.stop_id 
 JOIN trips t ON t.trip_id = st.trip_id 
 WHERE t.service_id IN (SELECT service_id FROM calendar WHERE tuesday = 1) 
 AND t.direction_id = 1 
 AND ST_Distance_Sphere(geom, ST_MakePoint(151.2263989448547,-33.88468522118266)) <= 0.4023367719716111 * 1609.34 
+AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '5 minute') 
+AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute')
+ORDER BY st.departure_time;
+
+SELECT DISTINCT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.departure_time 
+FROM stops s 
+JOIN stop_times st ON st.stop_id = s.stop_id 
+JOIN trips t ON t.trip_id = st.trip_id 
+WHERE t.service_id IN (SELECT service_id FROM calendar WHERE tuesday = 1) 
+AND t.direction_id = 0 
+AND ST_Distance_Sphere(geom, ST_MakePoint(151.2714953, -33.8912064)) <= 0.402 * 1609.34 
 AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute') 
 AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute');

@@ -260,19 +260,24 @@ stops.route('/nearest')
   .get(function(req, res) {
     var qs = req.query,
         date = new Date(),
-        params = [qs.stop_lat,qs.stop_lon].map(function(n) { return parseFloat(n, 10); }),
-        kmToMiles = (parseFloat(qs.within_km, 10) / 0.62137),
+        params = [qs.stop_lat,qs.stop_lon].map(function(n) { return (parseFloat(n, 10)).toFixed(7); }),
+        kmToMiles = (parseFloat(qs.within_km, 10) * 0.62137),
         dateQuery = " (SELECT service_id FROM calendar WHERE " + dayMap[date.getDay()] + " = 1)",
-        geomQuery = " AND ST_Distance_Sphere(geom, ST_MakePoint(" + params[0] + ", " + params[1] + ")) <= " + kmToMiles +" * 1609.34",
-        query = "SELECT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.departure_time" +
+        geomQuery = " AND ST_Distance_Sphere(geom, ST_MakePoint(" + params[1] + ", " + params[0] + ")) <= " + kmToMiles.toFixed(3) + " * 1609.34",
+        query = "SELECT DISTINCT s.stop_id, s.stop_name, s.stop_lat, s.stop_lon, st.departure_time" +
         " FROM stops s" +
         " JOIN stop_times st ON st.stop_id = s.stop_id" +
         " JOIN trips t ON t.trip_id = st.trip_id" +
-        " WHERE t.service_id IN " + dateQuery +
-        " AND t.direction_id = 1" +
+        " WHERE t.service_id IN" + dateQuery +
+        " AND t.direction_id = " + parseInt(qs.direction_id, 10) +
         geomQuery +
         " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute')" +
         " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute')";
+
+    console.log('---------');
+    console.log(query);
+    console.log('---------');
+    console.log(qs.within_km + 'km = ' + kmToMiles + 'miles');
 
     pg.connect(connString, function(err, client, done) {
       done();
@@ -280,7 +285,28 @@ stops.route('/nearest')
 
       client.query(query, [], function(err, stopsData) {
         if( err ) pgErrHandler(err);
-        res.json(_.groupBy(stopsData.rows, 'stop_id') || {});
+        var data = _.groupBy(stopsData.rows, 'stop_id'),
+            geoJson = [];
+
+        var layerData = [];
+        stopsData.rows.forEach(function(stop) {
+          layerData.push({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [stop.stop_lon, stop.stop_lat]
+            },
+            properties: {
+              "marker-size": "small",
+              "marker-color": "2775DB",
+              "marker-symbol": "bus",
+              "stop_id": stop.stop_id,
+              "stop_name": stop.stop_name
+            }
+          });
+        });
+
+        res.json({data: data, layer: layerData});
       });
     });
   });

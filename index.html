@@ -2,7 +2,7 @@
 <head>
   <title>Turf Test</title>
   <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
-  <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.3.0/turf.min.js"></script>
+  <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.4.0/turf.min.js"></script>
   <script src="//code.jquery.com/jquery-2.1.3.js"></script>
   <script src="semantic-ui/semantic.js"></script>
 
@@ -61,8 +61,6 @@
         </div>
       </div>
     </div>
-
-
   </div>
 
   <div class="right init">
@@ -71,6 +69,38 @@
   <div id="overlay">
     <div id="geolocate" class="ui button green">Locate Me!</div>
   </div>
+  <div id="near-me" class="ui hover-util">
+    <h6 class="ui header">Show me stops near me that have a bus leaving soon</h6>
+    <select id="distance">
+      <option value="0.25">250m</option>
+      <option value="0.5">500m</option>
+      <option value="1">1km</option>
+    </select>
+    <input id="direction_id" name="direction_id" type="checkbox" /><label>Into CBD?</label>
+    <div id="find-services" class="ui button mini blue">Find Stops</div>
+  </div>
+
+  <script>
+  $('#find-services').on('click', function() {
+    var pos = positionMarker.getLatLng(),
+        withinKm = $('#distance option:selected').val(),
+        directionId = $('#direction_id').is(':checked') ? 1 : 0;
+
+    $.ajax({
+      url: 'http://localhost:3001/nearest',
+      data: {
+        stop_lat: pos.lat,
+        stop_lon: pos.lng,
+        within_km: withinKm,
+        direction_id: directionId
+      }
+    }).done(function(data) {
+      nearestStopsLayer.setGeoJSON(data.layer);
+      map.removeLayer(radiusLayer);
+      createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
+    });
+  });
+  </script>
 
   <script>
     var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
@@ -92,39 +122,35 @@
     $('.menu .item').tab();
     $('.ui.dropdown').dropdown();
 
-    var CURRENT_STOP_ID;
-
-    // constants
-    var WALKING_DISTANCE = 0.25;
+    var CURRENT_STOP_ID,
+        WALKING_DISTANCE = 0.25,  // in km
+        positionMarker;           // user's position
 
     // map layers
-    var stopsGeoJson;
-    var radiusLayer;
-    var shapeLayer;
-    var startEndRouteLayer;
-    var stopsOnRouteLayer;
-
-    // global stops layer, needs to be cleared on drag
-    var nearestStopsLayer;
+    var stopsGeoJson,
+        radiusLayer,
+        shapeLayer,
+        startEndRouteLayer,
+        stopsOnRouteLayer,
+        nearestStopsLayer;
 
     // center of the radial
-    var point;
-    var radialStyle = {
-        "fill": "#6baed6",
-        "fill-opacity": 0.1,
-        "stroke": "#3182bd",
-        "stroke-width": 2,
-        "stroke-opacity": 0.5
-      };
+    var point,
+        radialStyle = {
+          "fill": "#6baed6",
+          "fill-opacity": 0.1,
+          "stroke": "#3182bd",
+          "stroke-width": 2,
+          "stroke-opacity": 0.5
+        };
 
-    var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0');
-    var positionMarker;
-    var icon = L.mapbox.marker.icon({
-      "marker-color": "#8E8E8E",
-      "title": "where are the stations?",
-      "marker-symbol": "pitch",
-      "marker-size": "small"
-    });
+    var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0'),
+        icon = L.mapbox.marker.icon({
+          "marker-color": "#8E8E8E",
+          "title": "where are the stations?",
+          "marker-symbol": "pitch",
+          "marker-size": "small"
+        });
 
     function createInitialPosition(coords) {
       return L.marker(coords, {
@@ -142,6 +168,7 @@
         if (positionMarker)
           map.removeLayer(positionMarker);
 
+        console.log(e);
         positionMarker = createInitialPosition(e.latlng);
         positionMarker.addTo(map);
 
@@ -150,7 +177,7 @@
         $('.right').removeClass('init');
         $('.left').show();
 
-        var pos = [e.latitude,e.longitude];
+        var pos = [e.latitude, e.longitude];
         map.setView(pos, 16);
 
         initApp(positionMarker.getLatLng());
@@ -174,7 +201,7 @@
     };
 
     function initApp(pos) {
-      createRadiusLayer({lat: pos.lat, lng: pos.lng});
+      createRadiusLayer({lat: pos.lat, lng: pos.lng}, WALKING_DISTANCE);
 
       // event handlers
       positionMarker.on('drag', function(evt) {
@@ -187,7 +214,8 @@
         $('#route-container').hide();
 
         // global
-        point = turf.point(lon, lat);
+        point = turf.point([lon, lat]);
+
         radialGeoJson = pointRadius(point, WALKING_DISTANCE, 'kilometers', 120);
         radialGeoJson.properties = radialStyle;
         radiusLayer.setGeoJSON(radialGeoJson);
@@ -206,13 +234,13 @@
       getStopsData();
     };
 
-    function createRadiusLayer(aroundPoint) {
+    function createRadiusLayer(aroundPoint, radiusInKm) {
       // the center of the radial, initially.
-      point = turf.point(aroundPoint.lng, aroundPoint.lat);
+      point = turf.point([aroundPoint.lng, aroundPoint.lat]);
 
       // radius
       radiusLayer = L.mapbox.featureLayer().addTo(map);
-      radialGeoJson = pointRadius(point, .25, 'kilometers', 120);
+      radialGeoJson = pointRadius(point, radiusInKm, 'kilometers', 120);
       radialGeoJson.properties = radialStyle;
       radiusLayer.setGeoJSON(radialGeoJson, {
         onEachFeature: function(feature, layer) { }
@@ -263,11 +291,14 @@
     }
 
     function addShapeLayer(shapeData, stopsData) {
-      var myStyle = {
-        "color": "#2775DB",
-        "weight": 3,
-        "opacity": 1
-      };
+      var routeLength = (turf.lineDistance(shapeData, 'kilometers')).toFixed(2),
+          myStyle = {
+            "color": "#2775DB",
+            "weight": 3,
+            "opacity": 1
+          };
+
+      $('.route-length').html(stopsData.length + ' stops in ' + routeLength + 'km');
 
       // clear previous layers
       if( shapeLayer )
@@ -405,8 +436,8 @@
             feature.properties["marker-symbol"] = "bus";
         });
 
-        var nearest = turf.nearest(point, withinRadius);
-        var nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
+        var nearest = turf.nearest(point, withinRadius),
+            nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
         nearest.properties["marker-color"] = "093d7c";
         nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>';
@@ -539,8 +570,14 @@
 
                 $('.show-route').on('click', function(evt) {
                   var tripId = $(this).data('trip_id');
+
                   $(this).toggleClass('active');
                   $(this).html($(this).hasClass('active') ? 'hide route' : 'show route');
+
+                  if ($(this).hasClass('active')) {
+                    $('.route-length').remove();
+                    $(this).append($('<div class="route-length"></div>'));
+                  }
 
                   getStopsForShape({trip_id: tripId}, function(stopsData) {
                     // plot the shape, with stops
