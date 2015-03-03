@@ -121,16 +121,26 @@ SELECT AddGeometryColumn ('stops', 'geom', 4326, 'POINT', 2);
 UPDATE stops SET geom = ST_Setsrid(ST_Makepoint(stop_lon, stop_lat),4326);
 
 /* find all stops around a point - where there is service leaving in X minutes */
-SELECT s.stop_name, s.stop_lat, s.stop_lon
+SELECT s.stop_name, s.stop_lat, s.stop_lon, st.departure_time
+	FROM stops s 
+	JOIN stop_times st ON st.stop_id = s.stop_id
+	JOIN trips t ON t.trip_id = st.trip_id
+	WHERE t.service_id IN (
+		SELECT c1.service_id
+		FROM calendar c1
+		WHERE c1.monday = 1
+	)
+	AND t.direction_id = 1
+	AND ST_Distance_Sphere(geom, ST_MakePoint(151.22639894485471, -33.88468522118266)) <= ((10 / 0.62137) / 100) * 1609.34
+	AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute') 
+	AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute') 
+	
+SELECT s.stop_name, s.stop_lat, s.stop_lon, st.departure_time 
 FROM stops s 
-JOIN stop_times st ON st.stop_id = s.stop_id
-JOIN trips t ON t.trip_id = st.trip_id
-AND t.service_id IN (SELECT c1.service_id
-FROM calendar c1
-WHERE c1.monday = 1)
-WHERE ST_Distance_Sphere(geom, ST_MakePoint(151.22639894485471, -33.88468522118266)) <= ((10 / 0.62137) / 100) * 1609.34
+JOIN stop_times st ON st.stop_id = s.stop_id 
+JOIN trips t ON t.trip_id = st.trip_id 
+WHERE t.service_id IN (SELECT service_id FROM calendar WHERE tuesday = 1) 
+AND t.direction_id = 1 
+AND ST_Distance_Sphere(geom, ST_MakePoint(151.2263989448547,-33.88468522118266)) <= 0.4023367719716111 * 1609.34 
 AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute') 
-AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute') 
-
-
-
+AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute');
