@@ -96,9 +96,16 @@
       }
     }).done(function(data) {
       nearestStopsLayer.setGeoJSON(data.layer);
-      map.removeLayer(radiusLayer);
-      createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
     });
+  });
+
+  $('#distance').on('change', function() {
+     var pos = positionMarker.getLatLng(),
+        withinKm = $('#distance option:selected').val();
+
+    map.removeLayer(radiusLayer);
+    createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
+
   });
   </script>
 
