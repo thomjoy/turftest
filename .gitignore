@@ -28,6 +28,6 @@ node_modules
 .lock-wscript
 
 # ignore gtfs folder/data
-api/data/gtfs
-api/data/shape
+api/data/gtfs/*
+api/data/shape/*
 api/data/*.zip
