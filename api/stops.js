@@ -4,7 +4,6 @@ var express = require('express'),
     _ = require('underscore'),
     stops = express(),
 
-
     // database
     pg = require('pg'),
     Cursor = require('pg-cursor'),
@@ -21,8 +20,6 @@ var express = require('express'),
 
 // set up middleware
 stops.use(cors());
-
-console.log('Loading Data from: ' + __dirname + '/data/gtfs/stops.json');
 
 // end points
 stops.route('/within/:distance/:latLng/')
@@ -254,3 +251,4 @@ stops.route('/nearest')
 
 stops.listen(3001);
 console.log('Stops API listening on 3001');
+console.log('Loading Data from: ' + __dirname + '/data/gtfs/stops.json');

@@ -62,6 +62,16 @@ var GetServicesButton = React.createClass({
   }
 });
 
+var FilterServicesCheckbox = React.createClass({
+  render: function() {
+    return(
+      <div>
+        <input id="direction_id" name="direction_id" type="checkbox" /><label>Into CBD?</label>
+      </div>
+    )
+  }
+});
+
 // Select
 var DistanceFromCurrentPositionSelect = React.createClass({
   render: function() {
@@ -79,14 +89,14 @@ var FindServicesArrivingSoon = React.createClass({
     return(
       <div id="near-me" className="ui hover-util">
         <h6 className="ui header">Show me stops near me that have a bus leaving soon</h6>
-        <DistanceFromCurrentPositionSelect />
+        <DistanceFromCurrentPositionSelect /><FilterServicesCheckbox />
         <GetServicesButton />
       </div>
     )
   }
 });
 
-React.render(<FindServicesArrivingSoon />, document.body);
+React.render(<FindServicesArrivingSoon />, document.getElementById('container'));
 
 $('#distance').on('change', function() {
    var pos = positionMarker.getLatLng(),
@@ -136,7 +146,6 @@ function createInitialPosition(coords) {
 // on it, and add a single marker.
 function kickOff() {
   map.on('locationfound', function(e) {
-    debugger;
     $('#overlay').hide();
     if (positionMarker)
       map.removeLayer(positionMarker);
@@ -542,8 +551,8 @@ function calcStopsInRadius() {
 function getStopsData() {
   $.ajax({url:'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
     .done(function(geojson) {
-      stopsGeoJson = JSON.parse(geojson);
-      calcStopsInRadius();
+      stopsGeoJson = geojson;
+      calcStopsInRadius(geojson);
     });
 }
 
@@ -555,9 +564,7 @@ function getStopsForShape(opts, cb) {
     endpoint += 'trip_id&id=' + opts.trip_id;
 
   $.ajax({url: endpoint})
-    .done(function(stops) {
-      cb(JSON.parse(stops));
-    });
+    .done(function(stops) { cb(stops); });
 }
 
 function getShapeData(opts, stopsData) {
@@ -569,16 +576,14 @@ function getShapeData(opts, stopsData) {
 
   $.ajax({url: endpoint})
     .done(function(geojson) {
-      addShapeLayer(JSON.parse(geojson), stopsData);
+      addShapeLayer(geojson, stopsData);
     });
 }
 
 function getServicesInMinutes(stopId, minutes, cb) {
   $.ajax({
     url:'http://127.0.0.1:3001/stops/' + stopId + '/in/' + minutes
-  }).done(function(services) {
-    cb(JSON.parse(services));
-  });
+  }).done(function(services) { cb(services); });
 }
 
 kickOff();
