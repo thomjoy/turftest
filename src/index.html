@@ -1,0 +1,85 @@
+<html>
+<head>
+  <title>Turf Test</title>
+  <script src="/src/components/jquery/dist/jquery.js"></script>
+  <script src="/src/components/semantic-ui/dist/semantic.js"></script>
+
+  <script src="/src/components/react/react.js"></script>
+  <script src="/src/components/react/JSXTransformer.js"></script>
+
+  <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
+  <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
+
+  <link href="/src/style/style.css" rel="stylesheet" />
+  <link href="/src/components/semantic-ui/dist/semantic.css" rel="stylesheet" />
+  <link href="/src/components/semantic-ui/dist/components/dropdown.css" />
+</head>
+<body>
+  <div class="left ui">
+    <h1 id="header">NSW Buses Explorer</h1>
+
+    <!-- radius info -->
+    <div id="location-info">
+      <div id="stops-nearby"></div>
+    </div>
+
+    <!-- selected stop info -->
+    <div id="stop-container">
+      <h2 id="stop-name">Click a Stop Marker...</h2>
+      <p id="stop-distance"></p>
+    </div>
+
+    <!-- routes -->
+    <div id="route-container">
+      <!-- Tabbed Menu -->
+      <div class="ui fluid tabular menu">
+        <a class="item active" data-tab="arriving-soon">Arriving Soon</a>
+        <a class="item" data-tab="all-services">All Services</a>
+      </div>
+
+      <div class="ui tab active" data-tab="arriving-soon" id="arriving-soon-container">
+        <div class="ui segment basic">
+          <ul id="arriving-soon"></ul>
+        </div>
+      </div>
+
+      <div class="ui tab" data-tab="all-services">
+        <div id="all-routes-container">
+          <div class="ui">
+            <div class="ui loader"></div>
+            <select id="route-select" class="ui fluid search selection dropdown"></select>
+          </div>
+        </div>
+        <!-- list of stops on a shape -->
+        <div id="shape-container">
+          <div id="shape-info">
+            <div class="header" id="shape-meta"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right init">
+    <div id="map" class="blur init"></div>
+  </div>
+
+  <div id="overlay"></div>
+
+  <div id="near-me" class="ui hover-util">
+    <h6 class="ui header">Show me stops near me that have a bus leaving soon</h6>
+    <select id="distance">
+      <option value="0.25">250m</option>
+      <option value="0.5">500m</option>
+      <option value="1">1km</option>
+    </select>
+    <input id="direction_id" name="direction_id" type="checkbox" /><label>Into CBD?</label>
+    <div id="find-services" class="ui button mini blue">Find Stops</div>
+  </div>
+
+  <!-- The App -->
+  <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
+  <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.4.0/turf.min.js"></script>
+  <script type="text/jsx" src="/src/js/app.js"></script>
+</body>
+</html>

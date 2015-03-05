@@ -28,5 +28,5 @@ node_modules
 .lock-wscript
 
 # ignore gtfs folder/data
-gtfs
-*.zip
+data/gtfs
+data/*.zip
