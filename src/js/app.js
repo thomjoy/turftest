@@ -31,7 +31,7 @@ var GeoLocateButton = React.createClass({
   }
 });
 
-React.render(<GeoLocateButton />, document.getElementById('overlay'));
+React.render(<GeoLocateButton />, document.getElementById('geolocation'));
 
 // Button
 var GetServicesButton = React.createClass({
@@ -74,9 +74,17 @@ var FilterServicesCheckbox = React.createClass({
 
 // Select
 var DistanceFromCurrentPositionSelect = React.createClass({
+  drawRadial: function() {
+    var pos = positionMarker.getLatLng(),
+        withinKm = $('#distance option:selected').val();
+
+    map.removeLayer(radiusLayer);
+    createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
+  },
+
   render: function() {
     return(
-      <select id="distance">
+      <select id="distance" onChange={this.drawRadial}>
         <option value="0.25">250m</option>
         <option value="0.5">500m</option>
         <option value="1">1km</option>
@@ -97,14 +105,6 @@ var FindServicesArrivingSoon = React.createClass({
 });
 
 React.render(<FindServicesArrivingSoon />, document.getElementById('container'));
-
-$('#distance').on('change', function() {
-   var pos = positionMarker.getLatLng(),
-      withinKm = $('#distance option:selected').val();
-
-  map.removeLayer(radiusLayer);
-  createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
-});
 
 // App starts here
 var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
@@ -146,11 +146,10 @@ function createInitialPosition(coords) {
 // on it, and add a single marker.
 function kickOff() {
   map.on('locationfound', function(e) {
-    $('#overlay').hide();
+    $('#geolocation').hide();
     if (positionMarker)
       map.removeLayer(positionMarker);
 
-    console.log(e);
     positionMarker = createInitialPosition(e.latlng);
     positionMarker.addTo(map);
 
@@ -169,7 +168,8 @@ function kickOff() {
   // to be shared, display an error message.
   map.on('locationerror', function() {
     $('#map').removeClass('blur');
-    geolocate.innerHTML = 'Position could not be found';
+    $('#gelocate').html('Position could not be found');
+
     if (positionMarker)
       map.removeLayer(positionMarker);
 
@@ -187,8 +187,8 @@ function initApp(pos) {
 
   // event handlers
   positionMarker.on('drag', function(evt) {
-    var lat = this.getLatLng()['lat'];
-    var lon = this.getLatLng()['lng'];
+    var lat = this.getLatLng()['lat'],
+        lon = this.getLatLng()['lng'];
 
     // clear the sidebar
     $('#route-info').empty();
@@ -202,7 +202,7 @@ function initApp(pos) {
     radialGeoJson.properties = radialStyle;
     radiusLayer.setGeoJSON(radialGeoJson);
 
-    calcStopsInRadius();
+    showStopsWithinRadius();
   });
 
   positionMarker.on('click', function(evt){
@@ -227,6 +227,7 @@ function createRadiusLayer(aroundPoint, radiusInKm) {
   radiusLayer.setGeoJSON(radialGeoJson, {
     onEachFeature: function(feature, layer) { }
   });
+
   radiusLayer.on('click', function(evt) { });
 }
 
@@ -346,31 +347,31 @@ function addShapeLayer(shapeData, stopsData) {
         console.log(evt);
       }
     });
-  }
-});
-
-// might be able to remove
-function generateMarkerGeoJson(coords) {
-  return {
-    type: "Feature",
-    geometry: {
-      type: "Point",
-      coordinates: [coords[0], coords[1]]
-    },
-    properties: {
-      "marker-size": "small",
-      "marker-color": "2775DB",
-      "marker-symbol": "bus"
     }
-  };
-}
+  });
+
+  // might be able to remove
+  function generateMarkerGeoJson(coords) {
+    return {
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [coords[0], coords[1]]
+      },
+      properties: {
+        "marker-size": "small",
+        "marker-color": "2775DB",
+        "marker-symbol": "bus"
+      }
+    };
+  }
 
   map.removeLayer(nearestStopsLayer);
   shapeLayer.addTo(map);
 }
 
 // main func
-function calcStopsInRadius() {
+function showStopsWithinRadius() {
   // clear previous
   if( nearestStopsLayer )
     map.removeLayer(nearestStopsLayer);
@@ -382,24 +383,17 @@ function calcStopsInRadius() {
   if( withinRadius.features.length > 0 ) {
     $('#stops-nearby')
       .html('<span id="num-stops">' + withinRadius.features.length + ' </span> stops within <span id="walking-distance">' + WALKING_DISTANCE + 'km</span>');
-
     $('#location-info').slideDown();
 
-    withinRadius.features.forEach(function(feature){
-        var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>';
-        feature.properties["marker-color"] = "2775DB";
-        feature.properties["title"] = popupContent;
-        feature.properties["marker-size"] = "small";
-        feature.properties["marker-symbol"] = "bus";
-    });
+    withinRadius.features.forEach(formatMarkerFromFeature);
 
-    var nearest = turf.nearest(point, withinRadius),
+    var nearest = formatMarkerFromFeature(turf.nearest(point, withinRadius)),
         nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
-    nearest.properties["marker-color"] = "093d7c";
+    /*nearest.properties["marker-color"] = "093d7c";
     nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>';
     nearest.properties["marker-size"] = "small";
-    nearest.properties["marker-symbol"] = "bus";
+    nearest.properties["marker-symbol"] = "bus";*/
 
     nearestStopsLayer = L.mapbox.featureLayer()
                         .setGeoJSON(turf.featurecollection([withinRadius, nearest]));
@@ -410,141 +404,158 @@ function calcStopsInRadius() {
           stopName = feature.properties.stop_name;
 
       // click on a marker within walking distance
-      marker.on('click', function(e) {
-        var highLightedStopIcon = {
-          "marker-color": "9370D8",
-          "marker-size": "small",
-          "marker-symbol": "bus",
-        };
-
-        var standardIcon = {
-          "marker-color": "2775DB",
-          "marker-size": "small",
-          "marker-symbol": "bus",
-          "opacity": 0.5
-        };
-
-        CURRENT_STOP_ID = stopId;
-        var _thismarker = marker;
-        nearestStopsLayer.eachLayer(function(_marker) {
-          if(_marker._leaflet_id !== _thismarker._leaflet_id)
-            _marker.setIcon(L.mapbox.marker.icon(standardIcon));
-        });
-
-        marker.setIcon(L.mapbox.marker.icon(highLightedStopIcon));
-        marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
-        marker.openPopup();
-
-        var featureMarker = {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [positionMarker.getLatLng().lng, positionMarker.getLatLng().lat]
-          }
-        };
-
-        var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
-        $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
-
-        // Get routes from this stop
-        var prm = xhr({url: 'http://127.0.0.1:3001/stops/' + stopId}).done(function(stopsResp) {
-          var routesFromStop = JSON.parse(stopsResp),
-              allRoutesSelect = $('#route-select'),
-              optionEls = [];
-
-          $('#stop-name').html(stopName);
-          $('#stop-container').show();
-
-          routesFromStop.forEach(function(d) {
-            //console.log(d);
-            var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
-            optionEls.push(optionEl);
-          });
-
-          // add the all routes select to the div
-          $('#all-routes').html(allRoutesSelect.html(optionEls));
-          $('#route-container').show();
-
-          allRoutesSelect.on('change', function(evt) {
-            var optionSelected = $('option:selected', this),
-                shapeId = this.value;
-
-            getStopsForShape({shape_id: shapeId}, function(stopsData) {
-              // plot the shape, with stops
-              getShapeData({shape_id: shapeId}, stopsData);
-
-              var elData = '<div class="header" id="shape-meta">' + stopsData.length + ' stops in xx minutes (est)</div>';
-
-              stopsData.forEach(function(s) {
-                var highlightRow = $('#stop-name').text() === s.stop_name ? ' highlight' : '';
-                elData += '<div class="stop-on-shape' + highlightRow + '" data-stop_id="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
-              });
-
-              $('#shape-info h2').show();
-              $('#shape-info').html(elData).show();
-            });
-          });
-
-          // add Upcoming buses to the Sidebar
-          getServicesInMinutes(stopId, 5, function(arrivingSoonData) {
-            var arrivingSoon = $('#arriving-soon'),
-                segment = $('.segment', '#arriving-soon-container'),
-                arrivingSoonItems = [];
-
-            segment.addClass('loading');
-
-            function makeHtml(service, html) {
-                var str = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
-                html += '<li class="service">' +
-                        '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong><div class="bus-headsign">' + service.trip_headsign + '</div></div>' +
-                        str + '</li>';
-            }
-
-            if( ! Object.keys(arrivingSoonData).length ) {
-              var html = '<li class="service-outer no-service">No Services ' +
-                        '<div id="find-later" class="later"> find later</div></li>';
-              arrivingSoonItems.push(html);
-            }
-            else {
-              for( var arrivalTimeInMinutes in arrivingSoonData ) {
-                var grouped = arrivingSoonData[arrivalTimeInMinutes],
-                    arr = grouped[0].departure_time.split(':'),
-                    depTime = arr[0] + ':' + arr[1];
-
-                var htmlItem = '<li class="service-outer">' +
-                          '<div class="time-segment">Arrives in ' + arrivalTimeInMinutes + 'm (' + depTime + ')</div>' +
-                          '<ul>';
-                grouped.forEach(function(service) { makeHtml(service, htmlItem); });
-                htmlItem += '</ul></li>';
-                arrivingSoonItems.push(htmlItem);
-              }
-            }
-
-            setTimeout(function() { segment.removeClass('loading'); }, 500);
-            arrivingSoon.html(arrivingSoonItems);
-
-            $('.show-route').on('click', function(evt) {
-              var tripId = $(this).data('trip_id');
-
-              $(this).toggleClass('active');
-              $(this).html($(this).hasClass('active') ? 'hide route' : 'show route');
-
-              if ($(this).hasClass('active')) {
-                $('.route-length').remove();
-                $(this).append($('<div class="route-length"></div>'));
-              }
-
-              getStopsForShape({trip_id: tripId}, function(stopsData) {
-                // plot the shape, with stops
-                getShapeData({trip_id: tripId}, stopsData);
-              });
-            });
-          });
-        });
-      });
+      marker.on('click', markerClickHandler);
     });
     nearestStopsLayer.addTo(map);
   }
+}
+
+function formatMarkerFromFeature(feature){
+  var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>';
+  feature.properties["marker-color"] = "2775DB";
+  feature.properties["title"] = popupContent;
+  feature.properties["marker-size"] = "small";
+  feature.properties["marker-symbol"] = "bus";
+  return feature;
+}
+
+function markerClickHandler(evt) {
+  var highLightedStopIcon = {
+    "marker-color": "9370D8",
+    "marker-size": "small",
+    "marker-symbol": "bus",
+  };
+
+  var standardIcon = {
+    "marker-color": "2775DB",
+    "marker-size": "small",
+    "marker-symbol": "bus",
+    "opacity": 0.5
+  };
+
+  var _thismarker = marker;
+
+  CURRENT_STOP_ID = stopId;
+  nearestStopsLayer.eachLayer(function(_marker) {
+    if(_marker._leaflet_id !== _thismarker._leaflet_id)
+      _marker.setIcon(L.mapbox.marker.icon(standardIcon));
+  });
+
+  marker.setIcon(L.mapbox.marker.icon(highLightedStopIcon));
+  marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
+  marker.openPopup();
+
+  var featureMarker = {
+    type: "Feature",
+    geometry: {
+      type: "Point",
+      coordinates: [positionMarker.getLatLng().lng, positionMarker.getLatLng().lat]
+    }
+  };
+
+  var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
+  $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
+
+  // Get routes from this stop
+  getRoutesFromStop(stopId, buildRoutesSelect));
+}
+
+function buildRoutesSelect(stopsResp) {
+  var routesFromStop = stopsResp,
+      allRoutesSelect = $('#route-select'),
+      optionEls = [];
+
+  $('#stop-name').html(stopName);
+  $('#stop-container').show();
+
+  routesFromStop.forEach(function(d) {
+    var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
+    optionEls.push(optionEl);
+  });
+
+  // add the all routes select to the div
+  $('#all-routes').html(allRoutesSelect.html(optionEls));
+  $('#route-container').show();
+
+  allRoutesSelect.on('change', function(evt) {
+    var optionSelected = $('option:selected', this),
+        shapeId = this.value;
+
+    getStopsForShape({shape_id: shapeId}, addShapeWithStopsToMap));
+  });
+
+  // add Upcoming buses to the Sidebar
+  getServicesInMinutes(stopId, 5, addArrivingSoonServicesToSidebar);
+}
+
+function addShapeWithStopsToMap(stopsData) {
+  // plot the shape, with stops
+  getShapeData({shape_id: shapeId}, stopsData);
+
+  var elData = '<div class="header" id="shape-meta">' + stopsData.length + ' stops in xx minutes (est)</div>';
+
+  stopsData.forEach(function(s) {
+    var highlightRow = $('#stop-name').text() === s.stop_name ? ' highlight' : '';
+    elData += '<div class="stop-on-shape' + highlightRow + '" data-stop_id="' + s.stop_id + '"><strong>' + s.departure_time.substring(0, s.departure_time.length - 6) + '</strong> ' + s.stop_name + '</div>';
+  });
+
+  $('#shape-info h2').show();
+  $('#shape-info').html(elData).show();
+}
+
+function addArrivingSoonServicesToSidebar(arrivingSoonData) {
+  var arrivingSoon = $('#arriving-soon'),
+      segment = $('.segment', '#arriving-soon-container'),
+      arrivingSoonItems = [];
+
+  segment.addClass('loading');
+
+  function makeHtml(service, html) {
+      var str = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
+      html += '<li class="service">' +
+              '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong><div class="bus-headsign">' + service.trip_headsign + '</div></div>' +
+              str + '</li>';
+  }
+
+  if( ! Object.keys(arrivingSoonData).length ) {
+    var html = '<li class="service-outer no-service">No Services ' +
+              '<div id="find-later" class="later"> find later</div></li>';
+    arrivingSoonItems.push(html);
+  }
+  else {
+    for( var arrivalTimeInMinutes in arrivingSoonData ) {
+      var grouped = arrivingSoonData[arrivalTimeInMinutes],
+          arr = grouped[0].departure_time.split(':'),
+          depTime = arr[0] + ':' + arr[1];
+
+      var htmlItem = '<li class="service-outer">' +
+                '<div class="time-segment">Arrives in ' + arrivalTimeInMinutes + 'm (' + depTime + ')</div>' +
+                '<ul>';
+      grouped.forEach(function(service) { makeHtml(service, htmlItem); });
+      htmlItem += '</ul></li>';
+      arrivingSoonItems.push(htmlItem);
+    }
+  }
+
+  setTimeout(function() { segment.removeClass('loading'); }, 500);
+  arrivingSoon.html(arrivingSoonItems);
+
+  $('.show-route').on('click', function(evt) {
+    var tripId = $(this).data('trip_id');
+
+    $(this).toggleClass('active');
+    $(this).html($(this).hasClass('active') ? 'hide route' : 'show route');
+
+    if ($(this).hasClass('active')) {
+      $('.route-length').remove();
+      $(this).append($('<div class="route-length"></div>'));
+    }
+
+    getStopsForShape({trip_id: tripId}, function(stopsData) {
+      // plot the shape, with stops
+      getShapeData({trip_id: tripId}, stopsData);
+    });
+  });
 }
 
 // get the stops.json file from the server
@@ -552,7 +563,7 @@ function getStopsData() {
   $.ajax({url:'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
     .done(function(geojson) {
       stopsGeoJson = geojson;
-      calcStopsInRadius(geojson);
+      showStopsWithinRadius();
     });
 }
 
@@ -578,6 +589,12 @@ function getShapeData(opts, stopsData) {
     .done(function(geojson) {
       addShapeLayer(geojson, stopsData);
     });
+}
+
+function getRoutesFromStop(stopId, cb) {
+  $.ajax({
+    url: 'http://127.0.0.1:3001/stops/' + stopId
+  }).done(function(stopsResp) { cb(stopsResp); });
 }
 
 function getServicesInMinutes(stopId, minutes, cb) {
