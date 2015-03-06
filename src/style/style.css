@@ -1,6 +1,17 @@
 * { font-family: 'Open Sans'; }
 body { margin: 0; padding: 0; }
 
+#app-startup {
+  width: 400px;
+  height: 200px;
+  background-color: #fff;
+  position: absolute;
+  top: 25%;
+  left: 35%;
+  padding: 12px;
+}
+#geolocate { }
+
 #near-me {
   position: absolute;
   left: 20%;
@@ -22,12 +33,7 @@ body { margin: 0; padding: 0; }
 
 #overlay { position: absolute; left: 0; width: 100%; min-height: 1024px; height: 100%; background-color: transparent; opacity: 1; }
 
-#geolocate {
-  margin: 0;
-  position: absolute;
-  top: 48%;
-  left: 48%;
-}
+
 
 #map { width: 100%; min-height: 1024px; height: 100%; }
 .init { width: 100%; height: 100%; }
@@ -54,7 +60,7 @@ body { margin: 0; padding: 0; }
 
 #stop-container {
   height: 56px;
-  background: mediumpurple url('stop-icon-white-m.png') 4 9 no-repeat;
+  background: mediumpurple url('../img/stop-icon-white-m.png') 4 9 no-repeat;
   padding: 5px;
   padding-top: 10px;
   padding-bottom: 10px;

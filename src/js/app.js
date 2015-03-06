@@ -31,7 +31,22 @@ var GeoLocateButton = React.createClass({
   }
 });
 
-React.render(<GeoLocateButton />, document.getElementById('geolocation'));
+var AppStartUpSplash = React.createClass({
+  render: function() {
+    return(
+      <div className="ui">
+        <h4 className="ui header">NSW Transport Explorer</h4>
+        <div className="ui segment">
+          <p>An exploration of the TDX Data provided by the NSW Transit authority</p>
+          <p>Hit the location button to begin</p>
+        </div>
+       <GeoLocateButton />
+      </div>
+    );
+  }
+})
+
+React.render(<AppStartUpSplash />, document.getElementById('app-startup'));
 
 // Button
 var GetServicesButton = React.createClass({
@@ -112,8 +127,13 @@ var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident
 $('.menu .item').tab();
 $('.ui.dropdown').dropdown();
 
-var CURRENT_STOP_ID,
-    WALKING_DISTANCE = 0.25,  // in km
+var selectedStop = {},
+    setSelectedStop = function(stopProps) {
+      //Object.keys(stopProps).filter(function(k) { if (['stop_id', 'stop_name'].indexOf(k) !== -1) return stopProps[k]; })
+      selectedStop = stopProps;
+    };
+
+var WALKING_DISTANCE = 0.25,  // in km
     positionMarker;           // user's position
 
 // map layers
@@ -146,7 +166,7 @@ function createInitialPosition(coords) {
 // on it, and add a single marker.
 function kickOff() {
   map.on('locationfound', function(e) {
-    $('#geolocation').hide();
+    $('#app-startup').hide();
     if (positionMarker)
       map.removeLayer(positionMarker);
 
@@ -168,7 +188,8 @@ function kickOff() {
   // to be shared, display an error message.
   map.on('locationerror', function() {
     $('#map').removeClass('blur');
-    $('#gelocate').html('Position could not be found');
+    $('#geolocate').html('Position could not be found');
+    $('#app-startup').hide().delay(1);
 
     if (positionMarker)
       map.removeLayer(positionMarker);
@@ -300,7 +321,7 @@ function addShapeLayer(shapeData, stopsData) {
                   geojson.properties.startRoute = true;
                 if( idx === numStops )
                   geojson.properties.endRoute = true;
-                if( stopsData[idx].stop_id == CURRENT_STOP_ID )
+                if( stopsData[idx].stop_id == selectedStop.stop_id )
                   geojson.properties.currentSelectedStop = true;
 
                 geojson.properties.stop_id = stopsData[idx].stop_id;
@@ -399,9 +420,6 @@ function showStopsWithinRadius() {
                         .setGeoJSON(turf.featurecollection([withinRadius, nearest]));
 
     nearestStopsLayer.eachLayer(function(marker) {
-      var feature = marker.feature,
-          stopId = feature.properties.stop_id,
-          stopName = feature.properties.stop_name;
 
       // click on a marker within walking distance
       marker.on('click', markerClickHandler);
@@ -420,22 +438,26 @@ function formatMarkerFromFeature(feature){
 }
 
 function markerClickHandler(evt) {
-  var highLightedStopIcon = {
-    "marker-color": "9370D8",
-    "marker-size": "small",
-    "marker-symbol": "bus",
-  };
+  var marker = evt.target,
+      feature = marker.feature,
+      stopId = feature.properties.stop_id;
 
-  var standardIcon = {
-    "marker-color": "2775DB",
-    "marker-size": "small",
-    "marker-symbol": "bus",
-    "opacity": 0.5
-  };
+  var _thismarker = evt;
+  var
+      highLightedStopIcon = {
+        "marker-color": "9370D8",
+        "marker-size": "small",
+        "marker-symbol": "bus",
+      },
+      standardIcon = {
+        "marker-color": "2775DB",
+        "marker-size": "small",
+        "marker-symbol": "bus",
+        "opacity": 0.5
+      };
 
-  var _thismarker = marker;
+  setSelectedStop(feature.properties);
 
-  CURRENT_STOP_ID = stopId;
   nearestStopsLayer.eachLayer(function(_marker) {
     if(_marker._leaflet_id !== _thismarker._leaflet_id)
       _marker.setIcon(L.mapbox.marker.icon(standardIcon));
@@ -457,7 +479,7 @@ function markerClickHandler(evt) {
   $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
 
   // Get routes from this stop
-  getRoutesFromStop(stopId, buildRoutesSelect));
+  getRoutesFromStop(stopId, buildRoutesSelect);
 }
 
 function buildRoutesSelect(stopsResp) {
@@ -465,7 +487,7 @@ function buildRoutesSelect(stopsResp) {
       allRoutesSelect = $('#route-select'),
       optionEls = [];
 
-  $('#stop-name').html(stopName);
+  $('#stop-name').html(selectedStop.stop_name);
   $('#stop-container').show();
 
   routesFromStop.forEach(function(d) {
@@ -481,11 +503,11 @@ function buildRoutesSelect(stopsResp) {
     var optionSelected = $('option:selected', this),
         shapeId = this.value;
 
-    getStopsForShape({shape_id: shapeId}, addShapeWithStopsToMap));
+    getStopsForShape({shape_id: shapeId}, addShapeWithStopsToMap);
   });
 
   // add Upcoming buses to the Sidebar
-  getServicesInMinutes(stopId, 5, addArrivingSoonServicesToSidebar);
+  getServicesInMinutes(selectedStop.stop_id, 5, addArrivingSoonServicesToSidebar);
 }
 
 function addShapeWithStopsToMap(stopsData) {

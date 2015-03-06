@@ -38,7 +38,7 @@ stops.route('/within/:distance/:latLng/')
 // get routes from a given stop
 stops.route('/stops/:stopid')
   .get(function(req, res) {
-    var params = [req.stopid],
+    var params = [req.params.stopid],
         query = "SELECT DISTINCT trips.route_id, routes.route_short_name, routes.route_long_name, trips.shape_id " +
         "FROM trips " +
         "JOIN routes on trips.route_id = routes.route_id " +
@@ -61,7 +61,7 @@ stops.route('/stops/:stopid/in/:minutes')
   .get(function(req, res) {
     var date = new Date(),
         dateQuery = " (SELECT service_id FROM calendar WHERE " + dayMap[date.getDay()] + " = 1)",
-        params = [req.stopid],
+        params = [req.params.stopid],
         query = "SELECT DISTINCT st.trip_id, st.departure_time, t.route_id, t.shape_id, t.trip_headsign" +
         " FROM stop_times st" +
         " JOIN trips t ON t.trip_id = st.trip_id" +
