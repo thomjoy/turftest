@@ -48,7 +48,6 @@ var AppStartUpSplash = React.createClass({
 
 React.render(<AppStartUpSplash />, document.getElementById('app-startup'));
 
-// Button
 var GetServicesButton = React.createClass({
   getInitialState: function() {
     return {

@@ -31,3 +31,5 @@ node_modules
 api/data/gtfs/*
 api/data/shape/*
 api/data/*.zip
+
+src/components
