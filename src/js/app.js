@@ -59,6 +59,8 @@ var GetServicesButton = React.createClass({
         withinKm = $('#distance option:selected').val(),
         directionId = $('#direction_id').is(':checked') ? 1 : 0;
 
+    this.setState({content: 'Finding...'});
+
     $.ajax({
       url: 'http://localhost:3001/nearest',
       data: {
@@ -67,9 +69,8 @@ var GetServicesButton = React.createClass({
         within_km: withinKm,
         direction_id: directionId
       }
-    }).done(function(data) {
-      nearestStopsLayer.setGeoJSON(data.layer);
-    });
+    })
+    .done(function(data) { nearestStopsLayer.setGeoJSON(data.layer); });
   },
   render: function() {
     return (<div id="find-services" onClick={this.getServices} className="ui button mini blue">{this.state.content}</div>);
@@ -531,11 +532,11 @@ function addArrivingSoonServicesToSidebar(arrivingSoonData) {
 
   segment.addClass('loading');
 
-  function makeHtml(service, html) {
-      var str = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
-      html += '<li class="service">' +
+  function makeServiceInnerHtml(service) {
+      var routeStr = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
+      return '<li class="service">' +
               '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong><div class="bus-headsign">' + service.trip_headsign + '</div></div>' +
-              str + '</li>';
+              routeStr + '</li>';
   }
 
   if( ! Object.keys(arrivingSoonData).length ) {
@@ -547,14 +548,12 @@ function addArrivingSoonServicesToSidebar(arrivingSoonData) {
     for( var arrivalTimeInMinutes in arrivingSoonData ) {
       var grouped = arrivingSoonData[arrivalTimeInMinutes],
           arr = grouped[0].departure_time.split(':'),
-          depTime = arr[0] + ':' + arr[1];
+          depTime = arr[0] + ':' + arr[1],
+          serviceHtml = '<li class="service-outer"><div class="time-segment">Arrives in ' + arrivalTimeInMinutes + 'm (' + depTime + ')</div><ul>';
 
-      var htmlItem = '<li class="service-outer">' +
-                '<div class="time-segment">Arrives in ' + arrivalTimeInMinutes + 'm (' + depTime + ')</div>' +
-                '<ul>';
-      grouped.forEach(function(service) { makeHtml(service, htmlItem); });
-      htmlItem += '</ul></li>';
-      arrivingSoonItems.push(htmlItem);
+      grouped.forEach(function(service) { serviceHtml += makeServiceInnerHtml(service); });
+      serviceHtml += '</ul></li>';
+      arrivingSoonItems.push(serviceHtml);
     }
   }
 
