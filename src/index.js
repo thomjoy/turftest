@@ -1,8 +1,10 @@
 var connect = require('connect'),
+    compression = require('compression'),
     serveStatic = require('serve-static'),
     cors = require('cors'),
     app = connect();
 
+app.use(compression());
 app.use(cors());
 
 app.use(serveStatic('.', {

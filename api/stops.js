@@ -1,5 +1,6 @@
 // API
 var express = require('express'),
+    compression = require('compression'),
     cors = require('cors'),
     _ = require('underscore'),
     stops = express(),
@@ -19,6 +20,7 @@ var express = require('express'),
     dayMap = {0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday'};
 
 // set up middleware
+stops.use(compression());
 stops.use(cors());
 
 // end points
