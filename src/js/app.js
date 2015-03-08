@@ -121,6 +121,101 @@ var FindServicesArrivingSoon = React.createClass({
 
 React.render(<FindServicesArrivingSoon />, document.getElementById('container'));
 
+var ServicesArrivingSoonTab = React.createClass({
+  render: function() {
+    var p = this.props.services;
+    var serviceGroups = (Object.keys(p)).map(function(key) {
+      var intKey = parseInt(key, 10),
+          serviceGroup = p[intKey];
+      console.log(serviceGroup);
+      return <ServiceGroup minutes={intKey} services={serviceGroup} />
+    });
+
+    return (
+      <div id="arriving-soon" className="ui segment basic">
+        {serviceGroups}
+      </div>
+    );
+  }
+});
+
+var ServiceGroup = React.createClass({
+  render: function() {
+    var arrivalTime = this.props.minutes == 1 ? this.props.minutes + " minute" : this.props.minutes + " minutes";
+    var services = this.props.services.map(function(service) {
+      return <Service data={service} />
+    });
+
+    return(
+      <div className="grouped-service-container">
+        <h5>Arriving in {arrivalTime}</h5>
+        {services}
+      </div>
+    );
+  }
+});
+
+var Service = React.createClass({
+  render: function() {
+    return(
+      <div className="service">
+          <div className="service-desc">
+            <strong className="bus-number">{this.props.data.route_id.split('_')[1]}</strong>
+            <div className="bus-headsign">{this.props.data.trip_headsign}</div>
+          </div>
+          <ServiceActions tripId={this.props.data.trip_id} />
+        </div>
+    );
+  }
+});
+
+var ServiceActions = React.createClass({
+  render: function() {
+    return (
+      <div className="service-actions">
+        <ToggleRouteOnMap tripId={this.props.tripId} />
+      </div>
+    );
+  }
+});
+
+var ToggleRouteOnMap = React.createClass({
+  getInitialState: function() {
+    return {
+      routeShowingOnMap: false,
+      routeFetched: false,
+      shapeId: null
+    }
+  },
+
+  handleClick: function() {
+    var ctx = this;
+    if (! this.state.routeFetched) {
+      getStopsForShape({trip_id: this.props.tripId}, function(stopsData) {
+        $.when(getShapeData({trip_id: this.props.tripId}, stopsData)).done(function(shapeData) {
+          this.setState({shapeId: shapeData.properties.shape_id.shape_id});
+          this.setState({routeFetched: true});
+        }.bind(ctx));
+      }.bind(ctx));
+    }
+    else {
+      toggleShapeLayer(this.state.shapeId, (this.state.routeShowingOnMap ? 'hide' : 'show'));
+    }
+
+    this.setState({routeShowingOnMap: !this.state.routeShowingOnMap});
+  },
+
+  render: function() {
+    var label = this.state.routeShowingOnMap ? 'Hide route' : 'Show route';
+    return(
+      <div>
+        <div className="show-route active" onClick={this.handleClick} data-trip_id={this.props.tripId}>{label}</div>
+        <div className="route-length">28 stops in 6.68km</div>
+      </div>
+    );
+  }
+});
+
 // App starts here
 var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
 
@@ -269,126 +364,163 @@ function pointRadius(pt, radius, units, resolution) {
   return turf.polygon([ring]);
 }
 
+var shapeLayerCache = {};
+
+function toggleShapeLayer(shapeId, action) {
+  switch (action) {
+    case 'show':
+      if (shapeLayerCache[shapeId]) {
+        for (var l in shapeLayerCache[shapeId])
+          map.addLayer(shapeLayerCache[shapeId][l]);
+      }
+    case 'hide':
+      for (var l in shapeLayerCache[shapeId]) {
+        debugger;
+        map.removeLayer(shapeLayerCache[shapeId][l]);
+      }
+  }
+}
+
 function addShapeLayer(shapeData, stopsData) {
-  var routeLength = (turf.lineDistance(shapeData, 'kilometers')).toFixed(2),
-      myStyle = {
+  var shapeId = shapeData.properties.shape_id.shape_id,
+      routeLength = (turf.lineDistance(shapeData, 'kilometers')).toFixed(2),
+      shapeStyle = {
         "color": "#2775DB",
         "weight": 3,
         "opacity": 1
       };
 
-  $('.route-length').html(stopsData.length + ' stops in ' + routeLength + 'km');
+  //$('.route-length').html(stopsData.length + ' stops in ' + routeLength + 'km');
 
   // clear previous layers
-  if( shapeLayer )
-    map.removeLayer(shapeLayer);
-  if( startEndRouteLayer )
-    map.removeLayer(startEndRouteLayer);
-  if( stopsOnRouteLayer )
-    map.removeLayer(stopsOnRouteLayer);
+  //if( shapeLayer )
+  //  map.removeLayer(shapeLayer);
+  //if( stopsOnRouteLayer )
+  //  map.removeLayer(stopsOnRouteLayer);
 
-  shapeLayer = L.geoJson(shapeData, {
-    onEachFeature: function(feature, layer) {
-      layer.setStyle(myStyle);
+  if( ! shapeLayerCache[shapeId] ) {
+    shapeLayer = L.geoJson(shapeData, {
+      onEachFeature: function(feature, layer) {
+        layer.setStyle(shapeStyle);
 
-      layer.on({
-        add: function() {
-          map.fitBounds(shapeLayer.getBounds());
+        layer.on({
+          add: function() {
+            map.fitBounds(shapeLayer.getBounds());
 
-          var circles = [],
-              circleOptions = {
-                color: '#2775DB',       // Stroke color
-                opacity: 1,             // Stroke opacity
-                weight: 3,              // Stroke weight
-                fillColor: '#fff',      // Fill color
-                fillOpacity: 1,         // Fill opacity
-                radius: 4
-              },
-              numStops = (stopsData.length - 1);
+            var circles = [],
+                circleOptions = {
+                  color: '#2775DB',       // Stroke color
+                  opacity: 1,             // Stroke opacity
+                  weight: 3,              // Stroke weight
+                  fillColor: '#fff',      // Fill color
+                  fillOpacity: 1,         // Fill opacity
+                  radius: 4
+                },
+                numStops = (stopsData.length - 1);
 
-          // plot stops on shape as circles
-          stopsData.forEach(function(stop) {
-            circles.push(L.circleMarker([stop.stop_lat, stop.stop_lon], circleOptions));
-          });
+            // plot stops on shape as circles
+            stopsData.forEach(function(stop) {
+              circles.push(L.circleMarker([stop.stop_lat, stop.stop_lon], circleOptions));
+            });
 
-          var circlesGeoJson = {
-            type: "FeatureCollection",
-            features: (function() {
-              return circles.map(function(circle, idx) {
-                var geojson = circle.toGeoJSON();
+            var circlesGeoJson = {
+              type: "FeatureCollection",
+              features: (function() {
+                return circles.map(function(circle, idx) {
+                  var geojson = circle.toGeoJSON();
 
-                if( idx === 0 )
-                  geojson.properties.startRoute = true;
-                if( idx === numStops )
-                  geojson.properties.endRoute = true;
-                if( stopsData[idx].stop_id == selectedStop.stop_id )
-                  geojson.properties.currentSelectedStop = true;
+                  if( idx === 0 )
+                    geojson.properties.startRoute = true;
+                  if( idx === numStops )
+                    geojson.properties.endRoute = true;
+                  if( stopsData[idx].stop_id == selectedStop.stop_id )
+                    geojson.properties.currentSelectedStop = true;
 
-                geojson.properties.stop_id = stopsData[idx].stop_id;
-                geojson.properties.title = '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
-                                           '<div>Stop ' + (idx + 1) + ' of ' + (numStops + 1) + '</div>';
+                  geojson.properties.stop_id = stopsData[idx].stop_id;
+                  geojson.properties.title = '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
+                                             '<div>Stop ' + (idx + 1) + ' of ' + (numStops + 1) + '</div>';
 
-                return geojson;
+                  return geojson;
+                });
+              })()
+            };
+
+          stopsOnRouteLayer = L.geoJson(circlesGeoJson, {
+            pointToLayer: function (feature, latlng) {
+              if( feature.properties.startRoute )
+                circleOptions.color = '#3cb371'; //mediumseagreen
+              if( feature.properties.endRoute )
+                circleOptions.color = '#cd5c5c'; //indianred
+              if( feature.properties.currentSelectedStop )
+                circleOptions.color = '#9370DB'; // mediumpurple
+              if( ! (feature.properties.endRoute || feature.properties.startRoute || feature.properties.currentSelectedStop))
+                circleOptions.color = '#2775DB';
+
+              return L.circleMarker(latlng, circleOptions);
+            },
+            onEachFeature: function(feature, layer) {
+              layer.bindPopup(feature.properties.title);
+
+              layer.on('mouseover', function(evt) {
+                var stopId = feature.properties.stop_id;
+                $('#shape-info .stop-on-shape').filter(function() {
+                  return $(this).data('stop_id') == stopId;
+                }).addClass('match-stop');
+                layer.openPopup();
               });
-            })()
-          };
 
-        stopsOnRouteLayer = L.geoJson(circlesGeoJson, {
-          pointToLayer: function (feature, latlng) {
-            if( feature.properties.startRoute )
-              circleOptions.color = '#3cb371'; //mediumseagreen
-            if( feature.properties.endRoute )
-              circleOptions.color = '#cd5c5c'; //indianred
-            if( feature.properties.currentSelectedStop )
-              circleOptions.color = '#9370DB'; // mediumpurple
-            if( ! (feature.properties.endRoute || feature.properties.startRoute || feature.properties.currentSelectedStop))
-              circleOptions.color = '#2775DB';
-
-            return L.circleMarker(latlng, circleOptions);
-          },
-          onEachFeature: function(feature, layer) {
-            layer.bindPopup(feature.properties.title);
-
-            layer.on('mouseover', function(evt) {
-              var stopId = feature.properties.stop_id;
-              $('#shape-info .stop-on-shape').filter(function() {
-                return $(this).data('stop_id') == stopId;
-              }).addClass('match-stop');
-              layer.openPopup();
-            });
-
-            layer.on('mouseout', function(evt) {
-               $('.match-stop').removeClass('match-stop');
-            });
-          }
-        }).addTo(map);
-      },
-      click: function(evt) {
-        console.log('Clicked on shape');
-        console.log(evt);
+              layer.on('mouseout', function(evt) {
+                 $('.match-stop').removeClass('match-stop');
+              });
+            }
+          }).addTo(map);
+        },
+        click: function(evt) {
+          console.log('Clicked on shape');
+          console.log(evt);
+        }
+      });
       }
     });
-    }
-  });
 
-  // might be able to remove
-  function generateMarkerGeoJson(coords) {
-    return {
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [coords[0], coords[1]]
-      },
-      properties: {
-        "marker-size": "small",
-        "marker-color": "2775DB",
-        "marker-symbol": "bus"
-      }
+    // add to cache
+    shapeLayerCache[shapeId] = {
+      shape: shapeLayer,
+      stops: stopsOnRouteLayer
+    }
+  }
+  else {
+    //console.log('Found shape layer ' + shapeId + ' in cache');
+    shapeLayerCache[shapeId] = {
+      shape: shapeLayer,
+      stops: stopsOnRouteLayer
     };
+
+    shapeLayer = shapeLayerCache[shapeId].shape;
+    stopsOnRouteLayer = shapeLayerCache[shapeId].stops;
   }
 
   map.removeLayer(nearestStopsLayer);
   shapeLayer.addTo(map);
+  stopsOnRouteLayer.addTo(map);
+
+  return shapeId;
+}
+
+// might be able to remove
+function generateMarkerGeoJson(coords) {
+  return {
+    type: "Feature",
+    geometry: {
+      type: "Point",
+      coordinates: [coords[0], coords[1]]
+    },
+    properties: {
+      "marker-size": "small",
+      "marker-color": "2775DB",
+      "marker-symbol": "bus"
+    }
+  };
 }
 
 // main func
@@ -558,24 +690,8 @@ function addArrivingSoonServicesToSidebar(arrivingSoonData) {
   }
 
   setTimeout(function() { segment.removeClass('loading'); }, 500);
-  arrivingSoon.html(arrivingSoonItems);
 
-  $('.show-route').on('click', function(evt) {
-    var tripId = $(this).data('trip_id');
-
-    $(this).toggleClass('active');
-    $(this).html($(this).hasClass('active') ? 'hide route' : 'show route');
-
-    if ($(this).hasClass('active')) {
-      $('.route-length').remove();
-      $(this).append($('<div class="route-length"></div>'));
-    }
-
-    getStopsForShape({trip_id: tripId}, function(stopsData) {
-      // plot the shape, with stops
-      getShapeData({trip_id: tripId}, stopsData);
-    });
-  });
+  React.render(<ServicesArrivingSoonTab services={arrivingSoonData} />, document.getElementById('arriving-soon-container'));
 }
 
 // get the stops.json file from the server
@@ -605,10 +721,8 @@ function getShapeData(opts, stopsData) {
   if(opts.trip_id)
     endpoint += 'trip_id&id=' + opts.trip_id;
 
-  $.ajax({url: endpoint})
-    .done(function(geojson) {
-      addShapeLayer(geojson, stopsData);
-    });
+  return $.when($.ajax({url: endpoint}))
+            .done(function(geojson) { addShapeLayer(geojson, stopsData); });
 }
 
 function getRoutesFromStop(stopId, cb) {
