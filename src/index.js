@@ -4,7 +4,7 @@ var connect = require('connect'),
     cors = require('cors'),
     app = connect();
 
-//app.use(compression());
+app.use(compression());
 app.use(cors());
 
 app.use(serveStatic('.', {

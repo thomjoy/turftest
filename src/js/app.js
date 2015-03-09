@@ -1,12 +1,30 @@
 // app.js
+var WALKING_DISTANCE = 0.25;
+
 L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
-var map = L.mapbox.map('map', 'thomjoy1984.igjcb5m0'),
+
+var map = L.mapbox.map('map', 'thomjoy1984.ldheb5dh'),
     icon = L.mapbox.marker.icon({
       "marker-color": "#8E8E8E",
       "title": "where are the stations?",
       "marker-symbol": "pitch",
       "marker-size": "small"
     });
+
+var AppStartUpSplash = React.createClass({
+  render: function() {
+    return(
+      <div className="ui">
+        <h4 className="ui header">NSW Transport Explorer</h4>
+        <div className="ui segment">
+          <p>An exploration of the TDX Data provided by the NSW Transit authority</p>
+          <p>Hit the location button to begin</p>
+        </div>
+       <GeoLocateButton />
+      </div>
+    );
+  }
+});
 
 // React Components
 var GeoLocateButton = React.createClass({
@@ -31,21 +49,6 @@ var GeoLocateButton = React.createClass({
   }
 });
 
-var AppStartUpSplash = React.createClass({
-  render: function() {
-    return(
-      <div className="ui">
-        <h4 className="ui header">NSW Transport Explorer</h4>
-        <div className="ui segment">
-          <p>An exploration of the TDX Data provided by the NSW Transit authority</p>
-          <p>Hit the location button to begin</p>
-        </div>
-       <GeoLocateButton />
-      </div>
-    );
-  }
-})
-
 React.render(<AppStartUpSplash />, document.getElementById('app-startup'));
 
 var GetServicesButton = React.createClass({
@@ -57,7 +60,8 @@ var GetServicesButton = React.createClass({
   getServices: function() {
     var pos = positionMarker.getLatLng(),
         withinKm = $('#distance option:selected').val(),
-        directionId = $('#direction_id').is(':checked') ? 1 : 0;
+        directionId = $('#direction_id').is(':checked') ? 1 : 0,
+        ctx = this;
 
     this.setState({content: 'Finding...'});
 
@@ -70,7 +74,10 @@ var GetServicesButton = React.createClass({
         direction_id: directionId
       }
     })
-    .done(function(data) { nearestStopsLayer.setGeoJSON(data.layer); });
+    .done(function(data) {
+      this.setState({content: 'Find Services' });
+      addNearestStopsLayer(data.layer);
+    }.bind(ctx));
   },
   render: function() {
     return (<div id="find-services" onClick={this.getServices} className="ui button mini blue">{this.state.content}</div>);
@@ -83,43 +90,75 @@ var FilterServicesCheckbox = React.createClass({
       <div>
         <input id="direction_id" name="direction_id" type="checkbox" /><label>Into CBD?</label>
       </div>
-    )
+    );
   }
 });
 
 // Select
 var DistanceFromCurrentPositionSelect = React.createClass({
-  drawRadial: function() {
+  render: function() {
+    return(
+      <select id="distance" onChange={this.changeHandler}>
+        <option value="0.25">250m</option>
+        <option value="0.5">500m</option>
+        <option value="1">1km</option>
+      </select>
+    );
+  },
+
+  changeHandler: function() {
+    this.props.onChange(this);
+  }
+});
+
+var StopsWithinRadius = React.createClass({
+  getInitialState: function() {
+    return {
+      numStops: 0
+    }
+  },
+
+  componentDidMount: function() {
+    this.updateRadiusInfo();
+  },
+
+  updateRadiusInfo: function() {
     var pos = positionMarker.getLatLng(),
         withinKm = $('#distance option:selected').val();
 
     map.removeLayer(radiusLayer);
     createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
+
+    // search again with the new radius
+    if (WALKING_DISTANCE !== withinKm) {
+      WALKING_DISTANCE = parseFloat(withinKm, 10);
+    }
+
+    this.setState({numStops: showStopsWithinRadius(WALKING_DISTANCE)});
   },
 
   render: function() {
-    return(
-      <select id="distance" onChange={this.drawRadial}>
-        <option value="0.25">250m</option>
-        <option value="0.5">500m</option>
-        <option value="1">1km</option>
-      </select>)
-  }
-});
+    var format = function(num) {
+          switch (num) {
+            case 0:
+              return 'No stops';
+            case 1:
+              return '1 stop';
+            default:
+              return num + ' stops';
+          }
+        },
+        numStops = format(this.state.numStops);
 
-var FindServicesArrivingSoon = React.createClass({
-  render: function() {
     return(
-      <div id="near-me" className="ui hover-util">
-        <h6 className="ui header">Show me stops near me that have a bus leaving soon</h6>
-        <DistanceFromCurrentPositionSelect /><FilterServicesCheckbox />
+      <div id="near-me" className="ui">
+        <div id="stops-nearby">{numStops} within <DistanceFromCurrentPositionSelect onChange={this.updateRadiusInfo} /></div>
+        <FilterServicesCheckbox />
         <GetServicesButton />
       </div>
     )
   }
 });
-
-React.render(<FindServicesArrivingSoon />, document.getElementById('container'));
 
 var ServicesArrivingSoonTab = React.createClass({
   render: function() {
@@ -228,8 +267,8 @@ var selectedStop = {},
       selectedStop = stopProps;
     };
 
-var WALKING_DISTANCE = 0.25,  // in km
-    positionMarker;           // user's position
+
+var positionMarker;           // user's position
 
 // map layers
 var stopsGeoJson,
@@ -257,6 +296,17 @@ function createInitialPosition(coords) {
   });
 }
 
+setTimeout(function() { getStopsData(); }, 1);
+
+// get the stops.json file from the server
+function getStopsData() {
+  $.ajax({url:'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
+    .done(function(geojson) {
+      stopsGeoJson = geojson;
+      //showStopsWithinRadius();
+    });
+}
+
 // Once we've got a position, zoom and center the map
 // on it, and add a single marker.
 function kickOff() {
@@ -277,6 +327,9 @@ function kickOff() {
     map.setView(pos, 16);
 
     initApp(positionMarker.getLatLng());
+
+    // render the radius / location info bar
+    React.render(<StopsWithinRadius numStops={0} />, document.getElementById('services-within-radius'));
   });
 
   // If the user chooses not to allow their location
@@ -329,7 +382,7 @@ function initApp(pos) {
   });
 
   // kick everything else off
-  getStopsData();
+  //getStopsData();
 }
 
 function createRadiusLayer(aroundPoint, radiusInKm) {
@@ -352,12 +405,12 @@ function pointRadius(pt, radius, units, resolution) {
   var ring = [],
       resMultiple = 360/resolution;
 
-  for(var i  = 0; i < resolution; i++) {
+  for (var i  = 0; i < resolution; i++) {
     var spoke = turf.destination(pt, radius, i*resMultiple, units);
     ring.push(spoke.geometry.coordinates);
   }
 
-  if((ring[0][0] !== ring[ring.length-1][0]) && (ring[0][1] != ring[ring.length-1][1])) {
+  if ((ring[0][0] !== ring[ring.length-1][0]) && (ring[0][1] != ring[ring.length-1][1])) {
     ring.push([ring[0][0], ring[0][1]]);
   }
 
@@ -369,15 +422,12 @@ var shapeLayerCache = {};
 function toggleShapeLayer(shapeId, action) {
   switch (action) {
     case 'show':
-      if (shapeLayerCache[shapeId]) {
-        for (var l in shapeLayerCache[shapeId])
-          map.addLayer(shapeLayerCache[shapeId][l]);
-      }
+      if (shapeLayerCache[shapeId])
+        map.addLayer(shapeLayerCache[shapeId]);
+      break;
     case 'hide':
-      for (var l in shapeLayerCache[shapeId]) {
-        debugger;
-        map.removeLayer(shapeLayerCache[shapeId][l]);
-      }
+      map.removeLayer(shapeLayerCache[shapeId]);
+      break;
   }
 }
 
@@ -388,15 +438,13 @@ function addShapeLayer(shapeData, stopsData) {
         "color": "#2775DB",
         "weight": 3,
         "opacity": 1
-      };
+      },
+      routeId = shapeData.properties.shape_id.route_id.split('_')[1],
+      tripHeadSign = shapeData.properties.shape_id.trip_headsign;
 
-  //$('.route-length').html(stopsData.length + ' stops in ' + routeLength + 'km');
-
-  // clear previous layers
-  //if( shapeLayer )
-  //  map.removeLayer(shapeLayer);
-  //if( stopsOnRouteLayer )
-  //  map.removeLayer(stopsOnRouteLayer);
+  var layerGroup = L.layerGroup();
+  var shapeLayerPopup = '<div>' + routeId + ' ' + tripHeadSign + '</div>' +
+                        '<div>' + stopsData.length + ' stops in ' + routeLength + 'km</div>';
 
   if( ! shapeLayerCache[shapeId] ) {
     shapeLayer = L.geoJson(shapeData, {
@@ -406,6 +454,7 @@ function addShapeLayer(shapeData, stopsData) {
         layer.on({
           add: function() {
             map.fitBounds(shapeLayer.getBounds());
+            layer.bindPopup(shapeLayerPopup);
 
             var circles = [],
                 circleOptions = {
@@ -437,7 +486,8 @@ function addShapeLayer(shapeData, stopsData) {
                     geojson.properties.currentSelectedStop = true;
 
                   geojson.properties.stop_id = stopsData[idx].stop_id;
-                  geojson.properties.title = '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
+                  geojson.properties.title = '<div>' + routeId + ' ' + tripHeadSign + '</div>' +
+                                             '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
                                              '<div>Stop ' + (idx + 1) + ' of ' + (numStops + 1) + '</div>';
 
                   return geojson;
@@ -445,6 +495,7 @@ function addShapeLayer(shapeData, stopsData) {
               })()
             };
 
+          // Stops, as indicated by circles on the shape
           stopsOnRouteLayer = L.geoJson(circlesGeoJson, {
             pointToLayer: function (feature, latlng) {
               if( feature.properties.startRoute )
@@ -458,6 +509,7 @@ function addShapeLayer(shapeData, stopsData) {
 
               return L.circleMarker(latlng, circleOptions);
             },
+
             onEachFeature: function(feature, layer) {
               layer.bindPopup(feature.properties.title);
 
@@ -473,36 +525,34 @@ function addShapeLayer(shapeData, stopsData) {
                  $('.match-stop').removeClass('match-stop');
               });
             }
-          }).addTo(map);
+          })
+
+          layerGroup.addLayer(stopsOnRouteLayer);
         },
         click: function(evt) {
           console.log('Clicked on shape');
           console.log(evt);
+        },
+        mouseover: function() {
+          layer.openPopup();
+        },
+        mouseout: function() {
+          layer.closePopup();
         }
       });
       }
     });
 
-    // add to cache
-    shapeLayerCache[shapeId] = {
-      shape: shapeLayer,
-      stops: stopsOnRouteLayer
-    }
+    layerGroup.addLayer(shapeLayer);
+    shapeLayerCache[shapeId] = layerGroup;
   }
   else {
-    //console.log('Found shape layer ' + shapeId + ' in cache');
-    shapeLayerCache[shapeId] = {
-      shape: shapeLayer,
-      stops: stopsOnRouteLayer
-    };
-
-    shapeLayer = shapeLayerCache[shapeId].shape;
-    stopsOnRouteLayer = shapeLayerCache[shapeId].stops;
+    console.log('Found shape layer ' + shapeId + ' in cache');
+    layerGroup = shapeLayerCache[shapeId];
   }
 
   map.removeLayer(nearestStopsLayer);
-  shapeLayer.addTo(map);
-  stopsOnRouteLayer.addTo(map);
+  layerGroup.addTo(map);
 
   return shapeId;
 }
@@ -523,36 +573,29 @@ function generateMarkerGeoJson(coords) {
   };
 }
 
-// main func
-function showStopsWithinRadius() {
+function addNearestStopsLayer(nearestStopsGeoJson) {
   // clear previous
   if( nearestStopsLayer )
     map.removeLayer(nearestStopsLayer);
 
-  var withinRadius = turf.featurecollection(stopsGeoJson.features.filter(function(stop){
-    if( turf.distance(stop, point, 'kilometers') <= WALKING_DISTANCE ) return true;
-  }));
+  if( !nearestStopsGeoJson.features )
+    nearestStopsGeoJson = turf.featurecollection(nearestStopsGeoJson);
 
-  if( withinRadius.features.length > 0 ) {
-    $('#stops-nearby')
-      .html('<span id="num-stops">' + withinRadius.features.length + ' </span> stops within <span id="walking-distance">' + WALKING_DISTANCE + 'km</span>');
-    $('#location-info').slideDown();
+  if( nearestStopsGeoJson.features.length > 0 ) {
+    nearestStopsGeoJson.features.forEach(formatMarkerFromFeature);
 
-    withinRadius.features.forEach(formatMarkerFromFeature);
-
-    var nearest = formatMarkerFromFeature(turf.nearest(point, withinRadius)),
+    var nearest = formatMarkerFromFeature(turf.nearest(point, nearestStopsGeoJson)),
         nearestdist = parseFloat(turf.distance(point, nearest, 'kilometers'));
 
-    /*nearest.properties["marker-color"] = "093d7c";
+    nearest.properties["marker-color"] = "093d7c";
     nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>';
     nearest.properties["marker-size"] = "small";
-    nearest.properties["marker-symbol"] = "bus";*/
+    nearest.properties["marker-symbol"] = "bus";
 
     nearestStopsLayer = L.mapbox.featureLayer()
-                        .setGeoJSON(turf.featurecollection([withinRadius, nearest]));
+                        .setGeoJSON(turf.featurecollection([nearestStopsGeoJson, nearest]));
 
     nearestStopsLayer.eachLayer(function(marker) {
-
       // click on a marker within walking distance
       marker.on('click', markerClickHandler);
     });
@@ -569,13 +612,22 @@ function formatMarkerFromFeature(feature){
   return feature;
 }
 
+// main func
+function showStopsWithinRadius(searchRadius) {
+  var radius = searchRadius || WALKING_DISTANCE,
+      stopsWithinRadius = turf.featurecollection(stopsGeoJson.features.filter(function(stop){
+        if( turf.distance(stop, point, 'kilometers') <= radius ) return true;
+      }));
+
+  addNearestStopsLayer(stopsWithinRadius);
+  return stopsWithinRadius.features.length;
+}
+
 function markerClickHandler(evt) {
   var marker = evt.target,
       feature = marker.feature,
-      stopId = feature.properties.stop_id;
-
-  var _thismarker = evt;
-  var
+      stopId = feature.properties.stop_id,
+      _thismarker = evt,
       highLightedStopIcon = {
         "marker-color": "9370D8",
         "marker-size": "small",
@@ -692,15 +744,6 @@ function addArrivingSoonServicesToSidebar(arrivingSoonData) {
   setTimeout(function() { segment.removeClass('loading'); }, 500);
 
   React.render(<ServicesArrivingSoonTab services={arrivingSoonData} />, document.getElementById('arriving-soon-container'));
-}
-
-// get the stops.json file from the server
-function getStopsData() {
-  $.ajax({url:'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
-    .done(function(geojson) {
-      stopsGeoJson = geojson;
-      showStopsWithinRadius();
-    });
 }
 
 function getStopsForShape(opts, cb) {
