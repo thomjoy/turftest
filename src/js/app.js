@@ -51,36 +51,11 @@ var GeoLocateButton = React.createClass({
 
 React.render(<AppStartUpSplash />, document.getElementById('app-startup'));
 
-var GetServicesButton = React.createClass({
-  getInitialState: function() {
-    return {
-      content: 'Find Services'
-    }
-  },
-  getServices: function() {
-    var pos = positionMarker.getLatLng(),
-        withinKm = $('#distance option:selected').val(),
-        directionId = $('#direction_id').is(':checked') ? 1 : 0,
-        ctx = this;
-
-    this.setState({content: 'Finding...'});
-
-    $.ajax({
-      url: 'http://localhost:3001/nearest',
-      data: {
-        stop_lat: pos.lat,
-        stop_lon: pos.lng,
-        within_km: withinKm,
-        direction_id: directionId
-      }
-    })
-    .done(function(data) {
-      this.setState({content: 'Find Services' });
-      addNearestStopsLayer(data.layer);
-    }.bind(ctx));
-  },
+var FilterServicesButton = React.createClass({
   render: function() {
-    return (<div id="find-services" onClick={this.getServices} className="ui button mini blue">{this.state.content}</div>);
+    return (
+      <div id="filter-services" onClick={this.props.onClick.bind(null, this)} className="ui button mini blue">{this.props.text}</div>
+    );
   }
 });
 
@@ -88,7 +63,8 @@ var FilterServicesCheckbox = React.createClass({
   render: function() {
     return(
       <div>
-        <input id="direction_id" name="direction_id" type="checkbox" /><label>Into CBD?</label>
+        <input id="direction_id" name="direction_id" type="checkbox" value={this.props.value} onClick={this.props.onClick.bind(null, this)} />
+        <label>Into CBD?</label>
       </div>
     );
   }
@@ -98,7 +74,7 @@ var FilterServicesCheckbox = React.createClass({
 var DistanceFromCurrentPositionSelect = React.createClass({
   render: function() {
     return(
-      <select id="distance" onChange={this.props.onChange.bind(null, this)}>
+      <select id="distance-filter" onChange={this.props.onChange.bind(null, this)}>
         <option value="0.25">250m</option>
         <option value="0.5">500m</option>
         <option value="1">1km</option>
@@ -107,33 +83,84 @@ var DistanceFromCurrentPositionSelect = React.createClass({
   }
 });
 
+// Select
+var ArrivalTimeInMinutesFilter = React.createClass({
+  render: function() {
+    return(
+      <select id="arrival-time-filter" onChange={this.props.onChange.bind(null, this)}>
+        <option value="5">5m</option>
+        <option value="10">10m</option>
+        <option value="15">15m</option>
+      </select>
+    );
+  }
+});
+
 var StopsWithinRadius = React.createClass({
   getInitialState: function() {
     return {
-      numStops: 0
+      numStops: 0,
+      distanceFilter: 0.25,
+      minutesFilter: 5,
+      directionIdFilter: 0,
+      filtering: false
     }
   },
 
   componentDidMount: function() {
-    this.updateRadiusInfo();
+    this.updateDistanceFilter();
+    this.updateArrivalTime();
+    this.updateDirectionFilter();
   },
 
-  updateRadiusInfo: function(component, event) {
+  updateDistanceFilter: function(component, event) {
     var pos = positionMarker.getLatLng(),
-        withinKm = $('#distance option:selected').val();
+        distanceFilter = parseFloat($('#distance-filter option:selected').val(), 10);
+
+    this.setState({distanceFilter: distanceFilter});
 
     map.removeLayer(radiusLayer);
-    createRadiusLayer({lat: pos.lat, lng: pos.lng}, withinKm);
+    createRadiusLayer({lat: pos.lat, lng: pos.lng}, distanceFilter);
 
     // search again with the new radius
-    if (WALKING_DISTANCE !== withinKm) {
-      WALKING_DISTANCE = parseFloat(withinKm, 10);
-    }
+    if (WALKING_DISTANCE !== distanceFilter)
+      WALKING_DISTANCE = distanceFilter;
 
     var numStops = showStopsWithinRadius(WALKING_DISTANCE);
-
-    //this.setState({numStops: numStops});
     this.setProps({numStops: numStops});
+  },
+
+  updateArrivalTime: function(component, event) {
+    var withinTimeInMinutes = $('#arrival-time-filter option:selected').val();
+    this.setState({minutesFilter: withinTimeInMinutes});
+  },
+
+  updateDirectionFilter: function(component, event) {
+    var directionId = $('#direction_id').is(':checked') ? 1 : 0;
+    this.setState({directionFilter: directionId});
+  },
+
+  filterServices: function() {
+    var pos = positionMarker.getLatLng(),
+        ctx = this;
+
+    $.ajax({
+      url: 'http://localhost:3001/filter',
+      data: {
+        stop_lat: pos.lat,
+        stop_lon: pos.lng,
+        within_km: this.state.distanceFilter,
+        direction_id: this.state.directionFilter,
+        within_minutes: this.state.minutesFilter
+      },
+      beforeSend: function() {
+        this.setState({filtering: true});
+      }.bind(ctx)
+    })
+    .done(function(data) {
+      this.setState({filtering: false});
+      addNearestStopsLayer(data.layer);
+    }.bind(ctx));
   },
 
   render: function() {
@@ -151,9 +178,10 @@ var StopsWithinRadius = React.createClass({
 
     return(
       <div id="near-me" className="ui">
-        <div id="stops-nearby">{numStops} within <DistanceFromCurrentPositionSelect onChange={this.updateRadiusInfo} /></div>
-        <FilterServicesCheckbox />
-        <GetServicesButton />
+        <div id="stops-nearby">{numStops} within <DistanceFromCurrentPositionSelect onChange={this.updateDistanceFilter} /> of you</div>
+        <div>Arriving within <ArrivalTimeInMinutesFilter onChange={this.updateArrivalTime} /></div>
+        <FilterServicesCheckbox value={0} onClick={this.updateDirectionFilter} />
+        <FilterServicesButton ref="filterButton" text={this.state.filtering ? "Filtering..." : "Filter Services"} onClick={this.filterServices} />
       </div>
     )
   }
@@ -162,11 +190,11 @@ var StopsWithinRadius = React.createClass({
 var ServicesArrivingSoonTab = React.createClass({
   render: function() {
     var p = this.props.services;
+
     var serviceGroups = (Object.keys(p)).map(function(key) {
       var intKey = parseInt(key, 10),
           serviceGroup = p[intKey];
-      console.log(serviceGroup);
-      return <ServiceGroup minutes={intKey} services={serviceGroup} />
+      return <ServiceGroup key={intKey} minutes={intKey} services={serviceGroup} />
     });
 
     return (
@@ -181,7 +209,7 @@ var ServiceGroup = React.createClass({
   render: function() {
     var arrivalTime = this.props.minutes == 1 ? this.props.minutes + " minute" : this.props.minutes + " minutes";
     var services = this.props.services.map(function(service) {
-      return <Service data={service} />
+      return <Service key={service.trip_id} data={service} />
     });
 
     return(
@@ -248,7 +276,7 @@ var ToggleRouteOnMap = React.createClass({
     return(
       <div>
         <div className="show-route active" onClick={this.handleClick} data-trip_id={this.props.tripId}>{label}</div>
-        <div className="route-length">28 stops in 6.68km</div>
+        <div className="route-length"></div>
       </div>
     );
   }
@@ -265,7 +293,6 @@ var selectedStop = {},
       //Object.keys(stopProps).filter(function(k) { if (['stop_id', 'stop_name'].indexOf(k) !== -1) return stopProps[k]; })
       selectedStop = stopProps;
     };
-
 
 var positionMarker;           // user's position
 

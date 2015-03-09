@@ -196,7 +196,7 @@ stops.route('/trip')
     });
   });
 
-stops.route('/nearest')
+stops.route('/filter')
   .get(function(req, res) {
     var qs = req.query,
         date = new Date(),
@@ -211,13 +211,14 @@ stops.route('/nearest')
         " WHERE t.service_id IN" + dateQuery +
         " AND t.direction_id = " + parseInt(qs.direction_id, 10) +
         geomQuery +
-        " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '10 minute')" +
+        " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) <= (interval '" + qs.within_minutes + " minute')" +
         " AND date_trunc('minute', st.departure_time::time) - date_trunc('minute', now()::time) > (interval '0 minute')";
 
     console.log('---------');
     console.log(query);
     console.log('---------');
     console.log(qs.within_km + 'km = ' + kmToMiles + 'miles');
+    console.log('Within ' + qs.within_minutes + ' minutes');
 
     pg.connect(connString, function(err, client, done) {
       done();

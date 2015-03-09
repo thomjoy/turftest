@@ -26,7 +26,7 @@ body { margin: 0; padding: 0; }
 #near-me #stops-nearby { margin-bottom: 6px; }
 #near-me select { margin-right: 3px; }
 #near-me label { display: inline-block; margin-left: 3px; }
-#find-services { margin-top: 10px; }
+#filter-services { margin-top: 10px; }
 
 .left { min-height: 1024px; padding: 0; margin: 0; overflow: hidden; width: 18%; float: left; display: none; background-color: #fff;}
 .right { padding:0; margin: 0; overflow: hidden; width: 82%; float: right;}
@@ -45,32 +45,37 @@ body { margin: 0; padding: 0; }
 
 #stop-container {
   height: 56px;
-  background: mediumpurple url('../img/stop-icon-white-m.png') 4 9 no-repeat;
+  /*background: mediumpurple url('../img/stop-icon-white-m.png') 4 9 no-repeat;*/
+  background-color: mediumpurple;
   padding: 5px;
   padding-top: 10px;
   padding-bottom: 10px;
   display: none;
 }
-#stop-name { font-size: 16px; color: #fff; margin: 0; padding-left: 34px; text-shadow: 1px 1px 0px purple; }
-#stop-distance { font-size: 12px; color: #fff; margin: 0; padding-left: 34px; text-shadow: 1px 1px 0px purple; }
+#stop-name { font-size: 16px; color: #fff; margin: 0; /*padding-left: 34px; text-shadow: 1px 1px 0px purple;*/  }
+#stop-distance { font-size: 12px; color: #fff; margin: 0; /*padding-left: 34px; text-shadow: 1px 1px 0px purple;*/ }
 
 #route-container { padding: 5px; margin-top: 5px; display: none; }
 
 #arriving-soon-container { margin-bottom: 20px; }
-#arriving-soon { list-style: none; margin: 0; padding: 0; }
+#arriving-soon { list-style: none; margin: 0; padding: 0; padding: 0px 8px; }
 
 .grouped-service-container { padding-bottom: 20px; }
 .grouped-service-container h5 {
-  padding-bottom: 10px;
+  padding-bottom: 4px;
   text-transform: uppercase;
   font-size: 12px;
   color: #777;
+  margin-top: 10px;
+  margin-bottom: 0px;
 }
-.grouped-service-container .service { padding: 0; margin: 0; }
+.grouped-service-container .service { padding: 4px; margin: 0; height: 46px; }
+.grouped-service-container .service:hover { background-color: #eee; }
 .grouped-service-container .service .service-desc { overflow: hidden; font-size: 14px; color: #333; padding: 2px 2px; cursor: pointer; }
-.grouped-service-container .service .service-desc .bus-headsign { float: left;  }
+.grouped-service-container .service .service-desc .bus-headsign { padding: 1px; float: left;  }
 .grouped-service-container .service .service-desc .bus-number {
   background: #2775DB;
+  text-shadow: 0px 1px 0px blue;
   display: inline-block;
   color: #fff;
   padding: 1px 2px;
@@ -83,7 +88,7 @@ body { margin: 0; padding: 0; }
 .grouped-service-container .service .service-actions .show-route {
   font-size: 11px;
   float: left;
-  margin-left: 45px;
+  margin-left: 47px;
   color: darkgray;
   cursor: pointer;
 }
