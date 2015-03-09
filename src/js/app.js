@@ -98,16 +98,12 @@ var FilterServicesCheckbox = React.createClass({
 var DistanceFromCurrentPositionSelect = React.createClass({
   render: function() {
     return(
-      <select id="distance" onChange={this.changeHandler}>
+      <select id="distance" onChange={this.props.onChange.bind(null, this)}>
         <option value="0.25">250m</option>
         <option value="0.5">500m</option>
         <option value="1">1km</option>
       </select>
     );
-  },
-
-  changeHandler: function() {
-    this.props.onChange(this);
   }
 });
 
@@ -122,7 +118,7 @@ var StopsWithinRadius = React.createClass({
     this.updateRadiusInfo();
   },
 
-  updateRadiusInfo: function() {
+  updateRadiusInfo: function(component, event) {
     var pos = positionMarker.getLatLng(),
         withinKm = $('#distance option:selected').val();
 
@@ -134,7 +130,10 @@ var StopsWithinRadius = React.createClass({
       WALKING_DISTANCE = parseFloat(withinKm, 10);
     }
 
-    this.setState({numStops: showStopsWithinRadius(WALKING_DISTANCE)});
+    var numStops = showStopsWithinRadius(WALKING_DISTANCE);
+
+    //this.setState({numStops: numStops});
+    this.setProps({numStops: numStops});
   },
 
   render: function() {
@@ -148,7 +147,7 @@ var StopsWithinRadius = React.createClass({
               return num + ' stops';
           }
         },
-        numStops = format(this.state.numStops);
+        numStops = format(this.props.numStops);
 
     return(
       <div id="near-me" className="ui">
@@ -371,7 +370,10 @@ function initApp(pos) {
     radialGeoJson.properties = radialStyle;
     radiusLayer.setGeoJSON(radialGeoJson);
 
-    showStopsWithinRadius();
+    var numStops = showStopsWithinRadius();
+
+    React.render(<StopsWithinRadius numStops={numStops} />,
+      document.getElementById('services-within-radius'));
   });
 
   positionMarker.on('click', function(evt){
@@ -380,9 +382,6 @@ function initApp(pos) {
     if (! map.hasLayer(nearestStopsLayer))
       map.addLayer(nearestStopsLayer);
   });
-
-  // kick everything else off
-  //getStopsData();
 }
 
 function createRadiusLayer(aroundPoint, radiusInKm) {

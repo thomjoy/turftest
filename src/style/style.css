@@ -40,7 +40,7 @@ body { margin: 0; padding: 0; }
 .init { width: 100%; height: 100%; }
 .blur { -webkit-filter: blur(5px); }
 
-#header { margin: 0; padding: 15px 8px; font-size: 21px; font-weight: normal; color: #fff; background-color: #3C4E5A; }
+#header { margin: 0; padding: 10px 8px; font-size: 16px; font-weight: normal; color: #fff; background-color: #3C4E5A; }
 .header { font-weight: normal; font-size: 14px; padding: 0; margin: 0; margin-bottom: 5px; color: #3C4E5A; }
 
 #stop-container {
@@ -85,7 +85,9 @@ body { margin: 0; padding: 0; }
   float: left;
   margin-left: 45px;
   color: darkgray;
+  cursor: pointer;
 }
+.grouped-service-container .service .service-actions .show-route:hover { color: #333; }
 
 
 #shape-container { padding: 5px; }
