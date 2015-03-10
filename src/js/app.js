@@ -55,7 +55,7 @@ var LayerDisplay = React.createClass({
   render: function() {
     return (
       <li className="layer">
-        {this.props.data.name}
+        {this.props.data.route} - {this.props.data.name}
       </li>
     );
   }
@@ -690,7 +690,7 @@ function addShapeLayer(shapeData, stopsData) {
   layerGroup.addTo(map);
 
   // messy
-  var layer = {id: shapeId, name: tripHeadSign, layers: [shapeLayer, stopsOnRouteLayer]};
+  var layer = {id: shapeId, name: tripHeadSign, route: routeId, layers: [shapeLayer, stopsOnRouteLayer]};
   console.log(layer);
   Layers.add(layer);
 
