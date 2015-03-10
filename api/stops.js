@@ -3,6 +3,7 @@ var express = require('express'),
     compression = require('compression'),
     cors = require('cors'),
     _ = require('underscore'),
+    fs = require('fs'),
     stops = express(),
 
     // database
@@ -250,6 +251,16 @@ stops.route('/filter')
         res.json({data: data, layer: layerData});
       });
     });
+  });
+
+stops.route('/suburb')
+  .get(function(req, res) {
+    var qs = req.query,
+        dataPath = __dirname + '/data/shape/json/',
+        suburb = qs.name;
+
+    var stream = fs.createReadStream(dataPath + suburb + ".json");
+    stream.pipe(res);
   });
 
 stops.listen(3001);

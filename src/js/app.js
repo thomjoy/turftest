@@ -11,6 +11,13 @@ var map = L.mapbox.map('map', 'thomjoy1984.ldheb5dh'),
       "marker-size": "small"
     });
 
+var geoCoder = L.mapbox.geocoder('mapbox.places');
+map.addControl(
+  L.mapbox.geocoderControl('mapbox.places', {})
+    .on('found',function(e) { console.group('Found'); console.log(e); })
+    .on('select',function(e) { console.group('Select'); console.log(e); })
+);
+
 var AppStartUpSplash = React.createClass({
   render: function() {
     return(
@@ -25,6 +32,49 @@ var AppStartUpSplash = React.createClass({
     );
   }
 });
+
+
+var Layers = (function() {
+  var _layers = {};
+
+  return {
+    all: function() {
+      return _layers;
+    },
+    add: function(layer) {
+      _layers[layer.id] = layer;
+    },
+    remove: function() {
+      _layers[layer.id] = null;
+    }
+  }
+})();
+
+var LayerDisplay = React.createClass({
+  render: function() {
+    return (
+      <li className="layer">
+        {this.props.data.name}
+      </li>
+    );
+  }
+});
+
+var LayersList = React.createClass({
+  render: function() {
+    var layers = (Object.keys(this.props.data)).map(function(id) {
+      return <LayerDisplay data={this.props.data[id]} />;
+    }.bind(this));
+
+    return(
+        <ul>
+          {layers}
+        </ul>
+    );
+  }
+});
+
+React.render(<LayersList data={Layers.all()} />, document.getElementById('layers-list'));
 
 // React Components
 var GeoLocateButton = React.createClass({
@@ -62,9 +112,9 @@ var FilterServicesButton = React.createClass({
 var FilterServicesCheckbox = React.createClass({
   render: function() {
     return(
-      <div>
+      <div className="filter filter-direction">
         <input id="direction_id" name="direction_id" type="checkbox" value={this.props.value} onClick={this.props.onClick.bind(null, this)} />
-        <label>Into CBD?</label>
+        <label>Towards CBD</label>
       </div>
     );
   }
@@ -87,11 +137,14 @@ var DistanceFromCurrentPositionSelect = React.createClass({
 var ArrivalTimeInMinutesFilter = React.createClass({
   render: function() {
     return(
-      <select id="arrival-time-filter" onChange={this.props.onChange.bind(null, this)}>
-        <option value="5">5m</option>
-        <option value="10">10m</option>
-        <option value="15">15m</option>
-      </select>
+      <div className="filter filter-time">
+        <label>Only show stops with buses arriving in:</label>
+        <select id="arrival-time-filter" onChange={this.props.onChange.bind(null, this)}>
+          <option value="5">5 mins</option>
+          <option value="10">10 mins</option>
+          <option value="15">15 mins</option>
+        </select>
+      </div>
     );
   }
 });
@@ -102,7 +155,8 @@ var StopsWithinRadius = React.createClass({
       numStops: 0,
       distanceFilter: 0.25,
       minutesFilter: 5,
-      directionIdFilter: 0,
+      directionIdFilter: 1,
+      filterPanelShowing: false,
       filtering: false
     }
   },
@@ -136,7 +190,7 @@ var StopsWithinRadius = React.createClass({
   },
 
   updateDirectionFilter: function(component, event) {
-    var directionId = $('#direction_id').is(':checked') ? 1 : 0;
+    var directionId = $('#direction_id').is(':checked') ? 0 : 1;
     this.setState({directionFilter: directionId});
   },
 
@@ -163,6 +217,10 @@ var StopsWithinRadius = React.createClass({
     }.bind(ctx));
   },
 
+  toggleFilterPanel: function() {
+    this.setState({filterPanelShowing: !this.state.filterPanelShowing});
+  },
+
   render: function() {
     var format = function(num) {
           switch (num) {
@@ -178,15 +236,21 @@ var StopsWithinRadius = React.createClass({
 
     return(
       <div id="near-me" className="ui">
-        <div id="stops-nearby">{numStops} within <DistanceFromCurrentPositionSelect onChange={this.updateDistanceFilter} /> of you</div>
-        <div>Arriving within <ArrivalTimeInMinutesFilter onChange={this.updateArrivalTime} /></div>
-        <FilterServicesCheckbox value={0} onClick={this.updateDirectionFilter} />
-        <FilterServicesButton ref="filterButton" text={this.state.filtering ? "Filtering..." : "Filter Services"} onClick={this.filterServices} />
+        <div id="stops-nearby">{numStops} within <DistanceFromCurrentPositionSelect onChange={this.updateDistanceFilter} /> of you
+          <div className="toggle-filters" onClick={this.toggleFilterPanel} className="">{this.state.filterPanelShowing ? '- hide filters' : '+ show filters'}</div>
+        </div>
+        <div id="stops-filters" className={this.state.filterPanelShowing ? '' : 'hidden'}>
+          <ArrivalTimeInMinutesFilter onChange={this.updateArrivalTime} />
+          <FilterServicesCheckbox value={0} onClick={this.updateDirectionFilter} />
+          <FilterServicesButton ref="filterButton" text={this.state.filtering ? "Filtering..." : "Apply Filter"} onClick={this.filterServices} />
+        </div>
       </div>
     )
   }
 });
 
+
+// Arriving Soon Tab
 var ServicesArrivingSoonTab = React.createClass({
   render: function() {
     var p = this.props.services;
@@ -316,6 +380,8 @@ var stopsGeoJson,
     stopsOnRouteLayer,
     nearestStopsLayer;
 
+var suburbLayerGroup = L.layerGroup();
+
 // center of the radial
 var point,
     radialStyle = {
@@ -336,11 +402,30 @@ function createInitialPosition(coords) {
 
 // get the stops.json file from the server
 function getStopsData() {
-  $.ajax({url:'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
+  $.ajax({url: 'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
     .done(function(geojson) { stopsGeoJson = geojson; });
 }
 
-setTimeout(function() { getStopsData(); }, 1);
+function addSuburbToMap(geoJson) {
+  var suburbLayer = L.mapbox.featureLayer();
+  geoJson.properties = {
+    "fill": "#B10001",
+    "fill-opacity": 0.2,
+    "stroke": "#B10001",
+    "stroke-opacity": 0.8,
+    "stroke-width": 1
+  };
+  suburbLayer.setGeoJSON(JSON.parse(geoJson));
+  suburbLayerGroup.addLayer(suburbLayer);
+  suburbLayerGroup.addTo(map);
+}
+
+function getBondi() {
+  $.ajax({url: 'http://127.0.0.1:3001/suburb?name=bondi beach'})
+    .done(addSuburbToMap);
+}
+
+setTimeout(function() { getBondi(); getStopsData(); }, 1);
 
 // Once we've got a position, zoom and center the map
 // on it, and add a single marker.
@@ -373,6 +458,11 @@ function kickOff() {
     $('#map').removeClass('blur');
     $('#geolocate').html('Position could not be found');
     $('#app-startup').hide().delay(1);
+
+    $('#map').removeClass('blur');
+    $('#map').removeClass('init');
+    $('.right').removeClass('init');
+    $('.left').show();
 
     if (positionMarker)
       map.removeLayer(positionMarker);
@@ -497,10 +587,10 @@ function addShapeLayer(shapeData, stopsData) {
                 circleOptions = {
                   color: '#2775DB',       // Stroke color
                   opacity: 1,             // Stroke opacity
-                  weight: 3,              // Stroke weight
+                  weight: 2,              // Stroke weight
                   fillColor: '#fff',      // Fill color
                   fillOpacity: 1,         // Fill opacity
-                  radius: 4
+                  radius: 3
                 },
                 numStops = (stopsData.length - 1);
 
@@ -579,7 +669,6 @@ function addShapeLayer(shapeData, stopsData) {
       });
       }
     });
-
     layerGroup.addLayer(shapeLayer);
     shapeLayerCache[shapeId] = layerGroup;
   }
@@ -590,6 +679,13 @@ function addShapeLayer(shapeData, stopsData) {
 
   map.removeLayer(nearestStopsLayer);
   layerGroup.addTo(map);
+
+  // messy
+  var layer = {id: shapeId, name: tripHeadSign, layers: [shapeLayer, stopsOnRouteLayer]};
+  console.log(layer);
+  Layers.add(layer);
+
+  React.render(<LayersList data={Layers.all()} />, document.getElementById('layers-list'));
 
   return shapeId;
 }
@@ -686,7 +782,7 @@ function markerClickHandler(evt) {
 
   marker.setIcon(L.mapbox.marker.icon(highLightedStopIcon));
   marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
-  marker.openPopup();
+  //marker.openPopup();
 
   var featureMarker = {
     type: "Feature",
@@ -706,8 +802,6 @@ function buildRoutesSelect(stopsResp) {
   var routesFromStop = stopsResp,
       allRoutesSelect = $('#route-select'),
       optionEls = [];
-
-
 
   routesFromStop.forEach(function(d) {
     var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
