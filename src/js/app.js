@@ -33,6 +33,7 @@ var AppStartUpSplash = React.createClass({
   }
 });
 
+var coloursArray = ['#2e9df7', '#4facf8', '#0d8ef6', '#6fbcfa', '#087bd9', '#0769b8'];
 
 var Layers = (function() {
   var _layers = {};
@@ -63,13 +64,13 @@ var LayerDisplay = React.createClass({
 var LayersList = React.createClass({
   render: function() {
     var layers = (Object.keys(this.props.data)).map(function(id) {
-      return <LayerDisplay data={this.props.data[id]} />;
+      return <LayerDisplay key={id} data={this.props.data[id]} />;
     }.bind(this));
 
     return(
-        <ul>
-          {layers}
-        </ul>
+      <ul>
+        {layers}
+      </ul>
     );
   }
 });
@@ -558,11 +559,19 @@ function toggleShapeLayer(shapeId, action) {
   }
 }
 
+var lastColor = 0;
+
 function addShapeLayer(shapeData, stopsData) {
+  var nextColor = lastColor++ > (coloursArray.length - 1) ? 0 : lastColor
+  var shapeColor = coloursArray[nextColor];
+
+  lastColor = nextColor;
+
+
   var shapeId = shapeData.properties.shape_id.shape_id,
       routeLength = (turf.lineDistance(shapeData, 'kilometers')).toFixed(2),
       shapeStyle = {
-        "color": "#2775DB",
+        "color": shapeColor,
         "weight": 3,
         "opacity": 1
       },
@@ -585,7 +594,7 @@ function addShapeLayer(shapeData, stopsData) {
 
             var circles = [],
                 circleOptions = {
-                  color: '#2775DB',       // Stroke color
+                  color: shapeColor,       // Stroke color
                   opacity: 1,             // Stroke opacity
                   weight: 2,              // Stroke weight
                   fillColor: '#fff',      // Fill color
@@ -632,7 +641,7 @@ function addShapeLayer(shapeData, stopsData) {
               if( feature.properties.currentSelectedStop )
                 circleOptions.color = '#9370DB'; // mediumpurple
               if( ! (feature.properties.endRoute || feature.properties.startRoute || feature.properties.currentSelectedStop))
-                circleOptions.color = '#2775DB';
+                circleOptions.color = shapeColor;
 
               return L.circleMarker(latlng, circleOptions);
             },
