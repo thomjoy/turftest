@@ -282,6 +282,20 @@ var ToggleRouteOnMap = React.createClass({
   }
 });
 
+var CurrentSelectedStopDisplay = React.createClass({
+  render: function() {
+    var distance = (this.props.distance * 1000).toPrecision(3);
+    return(
+      <div>
+        <h2 id="stop-name">{this.props.name}</h2>
+        <p id="stop-distance">{distance}m from your position</p>
+      </div>
+    );
+  }
+});
+
+React.render(<CurrentSelectedStopDisplay name={"Select a Stop"} distance={0} />, document.getElementById('stop-container'));
+
 // App starts here
 var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
 
@@ -387,8 +401,10 @@ function initApp(pos) {
 
     // clear the sidebar
     $('#route-info').empty();
-    $('#stop-container').hide();
     $('#route-container').hide();
+
+    // reset the stop info while dragging
+    React.render(<CurrentSelectedStopDisplay name={"Dragging..."} distance={0} />, document.getElementById('stop-container'));
 
     // global
     point = turf.point([lon, lat]);
@@ -685,8 +701,7 @@ function markerClickHandler(evt) {
     }
   };
 
-  var distance = turf.distance(featureMarker, marker.feature, 'kilometers');
-  $('#stop-distance').html((distance * 1000).toPrecision(3) + 'm from your position');
+  React.render(<CurrentSelectedStopDisplay name={selectedStop.stop_name} distance={turf.distance(featureMarker, marker.feature, 'kilometers')} />, document.getElementById('stop-container'));
 
   // Get routes from this stop
   getRoutesFromStop(stopId, buildRoutesSelect);
@@ -697,8 +712,7 @@ function buildRoutesSelect(stopsResp) {
       allRoutesSelect = $('#route-select'),
       optionEls = [];
 
-  $('#stop-name').html(selectedStop.stop_name);
-  $('#stop-container').show();
+
 
   routesFromStop.forEach(function(d) {
     var optionEl = $('<option class="fetch-shape" value="' + d.shape_id + '">' + d.route_short_name + ' - ' + d.route_long_name + '</option>');
