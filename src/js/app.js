@@ -282,6 +282,7 @@ var ToggleRouteOnMap = React.createClass({
   }
 });
 
+// Stop Display
 var CurrentSelectedStopDisplay = React.createClass({
   render: function() {
     var distance = (this.props.distance * 1000).toPrecision(3);
@@ -293,20 +294,17 @@ var CurrentSelectedStopDisplay = React.createClass({
     );
   }
 });
-
 React.render(<CurrentSelectedStopDisplay name={"Select a Stop"} distance={0} />, document.getElementById('stop-container'));
 
 // App starts here
 var liveTrafficUrl = 'http://livetraffic.rta.nsw.gov.au/traffic/hazards/incident.json';
 
+// Semantic U
 $('.menu .item').tab();
 $('.ui.dropdown').dropdown();
 
 var selectedStop = {},
-    setSelectedStop = function(stopProps) {
-      //Object.keys(stopProps).filter(function(k) { if (['stop_id', 'stop_name'].indexOf(k) !== -1) return stopProps[k]; })
-      selectedStop = stopProps;
-    };
+    setSelectedStop = function(stopProps) { selectedStop = stopProps; };
 
 var positionMarker;           // user's position
 
@@ -336,16 +334,13 @@ function createInitialPosition(coords) {
   });
 }
 
-setTimeout(function() { getStopsData(); }, 1);
-
 // get the stops.json file from the server
 function getStopsData() {
   $.ajax({url:'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
-    .done(function(geojson) {
-      stopsGeoJson = geojson;
-      //showStopsWithinRadius();
-    });
+    .done(function(geojson) { stopsGeoJson = geojson; });
 }
+
+setTimeout(function() { getStopsData(); }, 1);
 
 // Once we've got a position, zoom and center the map
 // on it, and add a single marker.
