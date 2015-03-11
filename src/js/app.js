@@ -690,7 +690,7 @@ function addShapeLayer(shapeData, stopsData) {
   layerGroup.addTo(map);
 
   // messy
-  var layer = {id: shapeId, name: tripHeadSign, route: routeId, layers: [shapeLayer, stopsOnRouteLayer]};
+  var layer = {id: shapeId, color: shapeColor, name: tripHeadSign, route: routeId, layers: [shapeLayer, stopsOnRouteLayer]};
   console.log(layer);
   Layers.add(layer);
 
