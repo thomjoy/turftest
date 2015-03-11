@@ -699,22 +699,6 @@ function addShapeLayer(shapeData, stopsData) {
   return shapeId;
 }
 
-// might be able to remove
-function generateMarkerGeoJson(coords) {
-  return {
-    type: "Feature",
-    geometry: {
-      type: "Point",
-      coordinates: [coords[0], coords[1]]
-    },
-    properties: {
-      "marker-size": "small",
-      "marker-color": "2775DB",
-      "marker-symbol": "bus"
-    }
-  };
-}
-
 function addNearestStopsLayer(nearestStopsGeoJson) {
   // clear previous
   if( nearestStopsLayer )
