@@ -1,0 +1,1 @@
+module.exports = require("npm:robust-orientation@1.1.3/orientation");

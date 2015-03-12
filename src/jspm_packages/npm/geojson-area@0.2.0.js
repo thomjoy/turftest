@@ -1,0 +1,1 @@
+module.exports = require("npm:geojson-area@0.2.0/index");

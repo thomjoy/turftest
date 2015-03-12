@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-triangle-grid@1.0.1/index");

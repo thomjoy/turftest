@@ -1,0 +1,1 @@
+module.exports = require("npm:simple-statistics@0.9.0/src/simple_statistics");

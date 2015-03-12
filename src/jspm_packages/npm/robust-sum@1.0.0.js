@@ -1,0 +1,1 @@
+module.exports = require("npm:robust-sum@1.0.0/robust-sum");

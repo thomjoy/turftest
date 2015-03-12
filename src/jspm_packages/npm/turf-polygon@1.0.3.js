@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-polygon@1.0.3/index");

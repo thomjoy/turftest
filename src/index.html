@@ -1,11 +1,7 @@
 <html>
 <head>
   <title>Turf Test</title>
-  <script src="/src/components/jquery/dist/jquery.js"></script>
-  <script src="/src/components/semantic-ui/dist/semantic.js"></script>
-
-  <script src="/src/components/react/react.js"></script>
-  <script src="/src/components/react/JSXTransformer.js"></script>
+  <!--<script src="/src/components/semantic-ui/dist/semantic.js"></script>-->
 
   <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
   <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
@@ -58,10 +54,17 @@
   <div id="app-startup"></div>
 
 
-
   <!-- The App -->
-  <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.js"></script>
-  <script src="//api.tiles.mapbox.com/mapbox.js/plugins/turf/v1.4.0/turf.min.js"></script>
-  <script type="text/jsx" src="/src/js/app.js"></script>
+  <script src='/src/jspm_packages/traceur.js'></script>
+  <script src='/src/jspm_packages/es6-module-loader.js'></script>
+  <script src='/src/jspm_packages/system.js'></script>
+  <script src='/src/config.js'></script>
+  <!--<script type="text/jsx" src="/src/lib/app.js"></script>-->
+
+  <script>
+    System.import('lib/bootstrap.jsx!').then(function(data) {
+      System.import('lib/application.jsx!');
+    });
+  </script>
 </body>
-</html>q
+</html>

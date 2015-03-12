@@ -1,0 +1,1 @@
+module.exports = require("npm:two-sum@1.0.0/two-sum");

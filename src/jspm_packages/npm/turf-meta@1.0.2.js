@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-meta@1.0.2/index");

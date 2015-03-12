@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-min@1.0.1/index");

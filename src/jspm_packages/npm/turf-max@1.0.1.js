@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-max@1.0.1/index");

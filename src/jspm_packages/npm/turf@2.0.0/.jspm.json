@@ -1,0 +1,165 @@
+{
+  "name": "turf",
+  "version": "2.0.0",
+  "description": "a node.js library for performing geospatial operations with geojson",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js",
+    "build": "browserify index.js -s turf > turf.js && uglifyjs turf.js -c -m > turf.min.js;",
+    "doc": "jsdoc index.js ./node_modules/turf-*/index.js",
+    "lint": "eslint --no-ignore ./node_modules/turf-*/index.js",
+    "size": "browserify index.js --full-paths -s turf | uglifyjs -c -m | discify | hcat"
+  },
+  "eslintConfig": {
+    "rules": {
+      "quotes": 0,
+      "curly": 0,
+      "camelcase": 0,
+      "space-infix-ops": 0,
+      "comma-spacing": 0,
+      "no-use-before-define": 0,
+      "strict": 0
+    },
+    "env": {
+      "node": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/turfjs/turf.git"
+  },
+  "keywords": [
+    "gis",
+    "geo",
+    "geojs",
+    "geospatial",
+    "geography",
+    "geometry",
+    "map",
+    "contour",
+    "centroid",
+    "tin",
+    "extent",
+    "geojson",
+    "grid",
+    "polygon",
+    "line",
+    "point",
+    "area",
+    "analysis",
+    "statistics",
+    "stats",
+    "midpoint",
+    "plane",
+    "quantile",
+    "jenks",
+    "sample"
+  ],
+  "author": {
+    "name": "morganherlocker"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/morganherlocker/turf/issues"
+  },
+  "devDependencies": {
+    "browserify": "~9.0.3",
+    "disc": "^1.3.2",
+    "eslint": "^0.15.0",
+    "hcat": "0.0.5",
+    "jsdoc": "^3.3.0-beta1",
+    "tape": "^3.5.0",
+    "uglify-js": "~2.4.16"
+  },
+  "gitHead": "63eaf28cf247c482923c8c3db89bc1aca9224529",
+  "homepage": "https://github.com/turfjs/turf",
+  "_id": "turf@2.0.0",
+  "_shasum": "a283a38f4d52c3d04b6015e6399df1548623ac4e",
+  "_from": ".",
+  "_npmVersion": "1.4.23",
+  "_npmUser": {
+    "name": "morganherlocker",
+    "email": "morgan.herlocker@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "morganherlocker",
+      "email": "morgan.herlocker@gmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "a283a38f4d52c3d04b6015e6399df1548623ac4e",
+    "tarball": "http://registry.npmjs.org/turf/-/turf-2.0.0.tgz"
+  },
+  "jspm": {},
+  "registry": "npm",
+  "format": "cjs",
+  "ignore": [
+    "node_modules"
+  ],
+  "dependencies": {
+    "turf-aggregate": "turf-aggregate@1.0.2",
+    "turf-along": "turf-along@^1.0.2",
+    "turf-area": "turf-area@^1.1.1",
+    "turf-average": "turf-average@1.1.1",
+    "turf-bbox-polygon": "turf-bbox-polygon@^1.0.1",
+    "turf-bearing": "turf-bearing@1.0.1",
+    "turf-bezier": "turf-bezier@1.0.2",
+    "turf-buffer": "turf-buffer@1.0.1",
+    "turf-center": "turf-center@^1.0.2",
+    "turf-centroid": "turf-centroid@^1.1.2",
+    "turf-combine": "turf-combine@1.0.2",
+    "turf-concave": "turf-concave@1.1.3",
+    "turf-convex": "turf-convex@1.0.1",
+    "turf-count": "turf-count@1.0.2",
+    "turf-destination": "turf-destination@^1.2.1",
+    "turf-deviation": "turf-deviation@1.0.1",
+    "turf-distance": "turf-distance@^1.0.1",
+    "turf-envelope": "turf-envelope@~1.0.2",
+    "turf-erase": "turf-erase@1.3.1",
+    "turf-explode": "turf-explode@^1.0.1",
+    "turf-extent": "turf-extent@^1.0.4",
+    "turf-featurecollection": "turf-featurecollection@~1.0.1",
+    "turf-filter": "turf-filter@^1.0.1",
+    "turf-flip": "turf-flip@1.0.3",
+    "turf-hex-grid": "turf-hex-grid@^2.0.1",
+    "turf-inside": "turf-inside@^1.1.4",
+    "turf-intersect": "turf-intersect@1.4.1",
+    "turf-isolines": "turf-isolines@1.0.2",
+    "turf-jenks": "turf-jenks@1.0.1",
+    "turf-kinks": "turf-kinks@^1.3.1",
+    "turf-line-distance": "turf-line-distance@^1.0.2",
+    "turf-line-slice": "turf-line-slice@^1.3.4",
+    "turf-linestring": "turf-linestring@^1.0.2",
+    "turf-max": "turf-max@1.0.1",
+    "turf-median": "turf-median@1.0.2",
+    "turf-merge": "turf-merge@1.0.2",
+    "turf-midpoint": "turf-midpoint@^1.0.1",
+    "turf-min": "turf-min@1.0.1",
+    "turf-nearest": "turf-nearest@^1.0.2",
+    "turf-planepoint": "turf-planepoint@1.0.1",
+    "turf-point": "turf-point@^2.0.1",
+    "turf-point-grid": "turf-point-grid@^2.0.0",
+    "turf-point-on-line": "turf-point-on-line@^1.0.2",
+    "turf-point-on-surface": "turf-point-on-surface@^1.1.1",
+    "turf-polygon": "turf-polygon@^1.0.3",
+    "turf-quantile": "turf-quantile@1.0.1",
+    "turf-random": "turf-random@^1.0.2",
+    "turf-reclass": "turf-reclass@1.0.1",
+    "turf-remove": "turf-remove@^1.0.1",
+    "turf-sample": "turf-sample@^1.0.1",
+    "turf-simplify": "turf-simplify@^1.0.3",
+    "turf-size": "turf-size@^1.1.1",
+    "turf-square": "turf-square@^1.0.1",
+    "turf-square-grid": "turf-square-grid@^1.0.0",
+    "turf-sum": "turf-sum@1.0.1",
+    "turf-tag": "turf-tag@~1.0.1",
+    "turf-tin": "turf-tin@1.0.6",
+    "turf-triangle-grid": "turf-triangle-grid@^1.0.0",
+    "turf-union": "turf-union@1.0.1",
+    "turf-variance": "turf-variance@1.0.1",
+    "turf-within": "turf-within@^1.0.1",
+    "process": "github:jspm/nodelibs-process@^0.1.0",
+    "buffer": "github:jspm/nodelibs-buffer@^0.1.0"
+  }
+}

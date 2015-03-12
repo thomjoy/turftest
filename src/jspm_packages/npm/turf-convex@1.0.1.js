@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-convex@1.0.1/index");

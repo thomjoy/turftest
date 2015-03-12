@@ -1,0 +1,1 @@
+module.exports = require("npm:bit-twiddle@1.0.2/twiddle");

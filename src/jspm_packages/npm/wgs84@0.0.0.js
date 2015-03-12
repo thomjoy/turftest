@@ -1,0 +1,1 @@
+module.exports = require("npm:wgs84@0.0.0/index");

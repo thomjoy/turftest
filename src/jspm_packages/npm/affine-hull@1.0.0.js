@@ -1,0 +1,1 @@
+module.exports = require("npm:affine-hull@1.0.0/aff");
