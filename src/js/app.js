@@ -33,7 +33,15 @@ var AppStartUpSplash = React.createClass({
   }
 });
 
-var coloursArray = ['#2e9df7', '#4facf8', '#0d8ef6', '#6fbcfa', '#087bd9', '#0769b8'];
+//var coloursArray = ['#2e9df7', '#4facf8', '#0d8ef6', '#6fbcfa', '#087bd9', '#0769b8'];
+var coloursArray = [
+'#d53e4f',
+'#fc8d59',
+'#fee08b',
+'#ffffbf',
+'#e6f598',
+'#99d594',
+'#3288bd']
 
 var Layers = (function() {
   var _layers = {};
@@ -52,20 +60,39 @@ var Layers = (function() {
 })();
 
 var LayerDisplay = React.createClass({
+  getInitialState: function() {
+    return { visibleOnMap: this.props.layerData.visibleOnMap }
+  },
+
   render: function() {
+    var liClassName = this.state.visibleOnMap ? '' : 'noshow',
+        liString = this.props.layerData.route + " - " + this.props.layerData.name;
+
     return (
-      <li className="layer">
-        {this.props.data.route} - {this.props.data.name}
+      <li className={liClassName} onClick={this.props.onClick.bind(null,this)}>
+        <span className="shapeColor" style={style}></span>
+        {liString}
       </li>
     );
   }
 });
 
 var LayersList = React.createClass({
-  render: function() {
-    var layers = (Object.keys(this.props.data)).map(function(id) {
-      return <LayerDisplay key={id} data={this.props.data[id]} />;
+  toggleLayerOnMap: function(component, event) {
+    var layers = component.props.layerData.layers,
+        layerShouldBeVisible = !component.state.visibleOnMap;
+
+    component.setState({visibleOnMap: layerShouldBeVisible}, function() {
+      layers.forEach(function(layer) {
+        layerShouldBeVisible ? map.addLayer(layer) : map.removeLayer(layer);
+      });
     }.bind(this));
+  },
+  render: function() {
+    var ids = Object.keys(this.props.data);
+        layers = ids.map(function(id) {
+          return <LayerDisplay onClick={this.toggleLayerOnMap} key={id} layerData={this.props.data[id]} />;
+        }.bind(this));
 
     return(
       <ul>
@@ -560,7 +587,6 @@ function toggleShapeLayer(shapeId, action) {
 }
 
 var lastColor = 0;
-
 function addShapeLayer(shapeData, stopsData) {
   var nextColor = lastColor++ > (coloursArray.length - 1) ? 0 : lastColor
   var shapeColor = coloursArray[nextColor];
@@ -690,8 +716,14 @@ function addShapeLayer(shapeData, stopsData) {
   layerGroup.addTo(map);
 
   // messy
-  var layer = {id: shapeId, color: shapeColor, name: tripHeadSign, route: routeId, layers: [shapeLayer, stopsOnRouteLayer]};
-  console.log(layer);
+  var layer = {
+    id: shapeId,
+    color: shapeColor,
+    name: tripHeadSign,
+    route: routeId,
+    layers: [shapeLayer, stopsOnRouteLayer],
+    visibleOnMap: true
+  };
   Layers.add(layer);
 
   React.render(<LayersList data={Layers.all()} />, document.getElementById('layers-list'));

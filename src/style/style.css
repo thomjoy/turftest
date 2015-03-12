@@ -126,7 +126,11 @@ body { margin: 0; padding: 0; }
   width: 240px;
   height: auto;
   padding: 10px;
-  background-color: #fff;
+  background-color: #222;
+  color: #fafafa;
 }
 #layers-list ul { list-style-type: none; margin: 0px; padding: 0px; }
-#layers-list ul li { }
+#layers-list ul li { padding: 3px 0px; cursor: pointer; }
+#layers-list ul li.noshow { }
+#layers-list ul li.noshow span { color: #666;  }
+.shapeColor { display: inline-block; height: 6px; width: 12px; margin-right: 6px; }
