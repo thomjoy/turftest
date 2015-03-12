@@ -147,7 +147,7 @@ class MyMap {
       if (! this.map.hasLayer(this.radiusLayer))
         this.map.addLayer(this.radiusLayer);
       if (! this.map.hasLayer(this.nearestStopsLayer))
-        this.map.addLayer(nearestStopsLayer);
+        this.map.addLayer(this.nearestStopsLayer);
     });
   }
 
