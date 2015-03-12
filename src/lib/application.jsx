@@ -6,7 +6,6 @@ import StopsWithinRadius from 'lib/components/ServiceFilters.jsx!';
 import CurrentSelectedStop from 'lib/components/CurrentSelectedStop.jsx!';
 import Services from 'lib/components/Services.jsx!';
 
-
 // data
 import Layers from 'lib/components/Layers';
 import MyMap from 'lib/components/Map';
@@ -14,7 +13,6 @@ import MyMap from 'lib/components/Map';
 console.log('application:', MyMap);
 
 // map functions
-console.log
 var WALKING_DISTANCE = 0.25,
     icon = L.mapbox.marker.icon({
       "marker-color": "#8E8E8E",
@@ -48,7 +46,7 @@ var point;
 // get the stops.json file from the server
 function getStopsData() {
   $.ajax({url: 'http://127.0.0.1:3000/api/data/gtfs/stops.json'})
-    .done(function(geojson) { stopsGeoJson = geojson; });
+    .done(function(geojson) { window.stopsGeoJson = geojson; });
 }
 
 setTimeout(function() { getStopsData(); }, 1);

@@ -139,7 +139,7 @@ class MyMap {
       radialGeoJson.properties = this.radialStyle;
       this.radiusLayer.setGeoJSON(radialGeoJson);
 
-      //var numStops = showStopsWithinRadius();
+      var numStops = this.showStopsWithinRadius();
       //React.render(<StopsWithinRadius numStops={numStops} />, document.getElementById('services-within-radius'));
     });
 
@@ -165,6 +165,100 @@ class MyMap {
 
     radiusLayer.on('click', function(evt) { });
     return radiusLayer;
+  }
+
+  addNearestStopsLayer(nearestStopsGeoJson) {
+    // clear previous
+    if( this.nearestStopsLayer )
+      this.map.removeLayer(this.nearestStopsLayer);
+
+    if( !nearestStopsGeoJson.features )
+      nearestStopsGeoJson = turf.featurecollection(nearestStopsGeoJson);
+
+    var formatMarkerFromFeature = function(feature) {
+      var popupContent = '<strong class="stop-name">' + feature.properties.stop_name + '</strong> <span class="stop-id">(' + feature.properties.stop_id + ')</span>';
+      feature.properties["marker-color"] = "2775DB";
+      feature.properties["title"] = popupContent;
+      feature.properties["marker-size"] = "small";
+      feature.properties["marker-symbol"] = "bus";
+      return feature;
+    };
+
+    if( nearestStopsGeoJson.features.length > 0 ) {
+      nearestStopsGeoJson.features.forEach(formatMarkerFromFeature);
+
+      var nearest = formatMarkerFromFeature(turf.nearest(this.userCurrentPosition, nearestStopsGeoJson)),
+          nearestdist = parseFloat(turf.distance(this.userCurrentPosition, nearest, 'kilometers'));
+
+      nearest.properties["marker-color"] = "093d7c";
+      nearest.properties["title"] = '<strong class="stop-name">' + nearest.properties.stop_name +'</strong> <span class="stop-id">(' + nearest.properties.stop_id + ')</span>';
+      nearest.properties["marker-size"] = "small";
+      nearest.properties["marker-symbol"] = "bus";
+
+      this.nearestStopsLayer = L.mapbox.featureLayer()
+                          .setGeoJSON(turf.featurecollection([nearestStopsGeoJson, nearest]));
+
+      let markerClickHandler = (evt) => {
+        var marker = evt.target,
+            feature = marker.feature,
+            stopId = feature.properties.stop_id,
+            _thismarker = evt,
+            highLightedStopIcon = {
+              "marker-color": "9370D8",
+              "marker-size": "small",
+              "marker-symbol": "bus",
+            },
+            standardIcon = {
+              "marker-color": "2775DB",
+              "marker-size": "small",
+              "marker-symbol": "bus",
+              "opacity": 0.5
+            };
+
+        //setSelectedStop(feature.properties);
+
+        this.nearestStopsLayer.eachLayer(function(_marker) {
+          if(_marker._leaflet_id !== _thismarker._leaflet_id)
+            _marker.setIcon(L.mapbox.marker.icon(standardIcon));
+        });
+
+        marker.setIcon(L.mapbox.marker.icon(highLightedStopIcon));
+        marker.bindPopup(feature.properties.title, {minWidth: 220, maxWidth: 280, closeButton: true});
+        marker.openPopup();
+
+        var featureMarker = {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [this.positionMarker.getLatLng().lng, this.positionMarker.getLatLng().lat]
+          }
+        };
+
+        //React.render(<CurrentSelectedStopDisplay name={selectedStop.stop_name} distance={turf.distance(featureMarker, marker.feature, 'kilometers')} />, document.getElementById('stop-container'));
+
+        // Get routes from this stop
+        //getRoutesFromStop(stopId, buildRoutesSelect);
+      };
+
+
+      this.nearestStopsLayer.eachLayer(function(marker) {
+        // click on a marker within walking distance
+        marker.on('click', markerClickHandler);
+      });
+
+      this.nearestStopsLayer.addTo(this.map);
+    }
+  }
+
+  showStopsWithinRadius(searchRadius) {
+    var WALKING_DISTANCE = 0.25;
+    var radius = searchRadius || WALKING_DISTANCE,
+        stopsWithinRadius = turf.featurecollection(window.stopsGeoJson.features.filter((stop) => {
+          if( turf.distance(stop, this.userCurrentPosition, 'kilometers') <= radius ) return true;
+        }));
+
+    this.addNearestStopsLayer(stopsWithinRadius);
+    return stopsWithinRadius.features.length;
   }
 }
 
