@@ -12,6 +12,7 @@ System.config({
     "jquery": "github:components/jquery@2.1.3",
     "jsx": "github:floatdrop/plugin-jsx@1.1.0",
     "mapbox.js": "npm:mapbox.js@2.1.5",
+    "pubsub-js": "npm:pubsub-js@1.5.2",
     "react": "npm:react@0.13.0",
     "turf": "npm:turf@2.0.0",
     "underscore": "npm:underscore@1.8.2",
@@ -420,6 +421,9 @@ System.config({
       "crypto": "github:jspm/nodelibs-crypto@0.1.0",
       "parse-asn1": "npm:parse-asn1@3.0.0",
       "randombytes": "npm:randombytes@2.0.1"
+    },
+    "npm:pubsub-js@1.5.2": {
+      "process": "github:jspm/nodelibs-process@0.1.1"
     },
     "npm:punycode@1.3.2": {
       "process": "github:jspm/nodelibs-process@0.1.1"

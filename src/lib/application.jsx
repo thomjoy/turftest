@@ -1,4 +1,5 @@
 import React from 'react';
+import PubSub from 'pubsub-js';
 
 import AppStartUpSplash from 'lib/components/StartUpSplash.jsx!';
 import LayersDisplay from 'lib/components/LayersDisplay.jsx!';
@@ -10,7 +11,20 @@ import Services from 'lib/components/Services.jsx!';
 import Layers from 'lib/components/Layers';
 import MyMap from 'lib/components/Map';
 
-console.log('application:', MyMap);
+// Semantic U
+//$('.menu .item').tab();
+//$('.ui.dropdown').dropdown();
+
+PubSub.subscribe('map.init-complete', (msg, data) => {
+
+});
+
+// When a stop on the map is clicked (selected), render the Selected Stop compontent in the sidebar
+PubSub.subscribe('map.stop-selected', (msg, data) => {
+   React.render(<CurrentSelectedStop name={data.selectedStop}
+          distance={data.distanceFromUserPosition} />,
+          document.getElementById('stop-container'));
+});
 
 // map functions
 var WALKING_DISTANCE = 0.25,
@@ -19,29 +33,12 @@ var WALKING_DISTANCE = 0.25,
       "title": "where are the stations?",
       "marker-symbol": "pitch",
       "marker-size": "small"
-    });
-
-var coloursArray = ['#d53e4f', '#fc8d59', '#fee08b', '#ffffbf', '#e6f598', '#99d594', '#3288bd'];
-
-// Semantic U
-//$('.menu .item').tab();
-//$('.ui.dropdown').dropdown();
+    }),
+    coloursArray = ['#d53e4f', '#fc8d59', '#fee08b', '#ffffbf', '#e6f598', '#99d594', '#3288bd'];
 
 var selectedStop = {},
-    setSelectedStop = function(stopProps) { selectedStop = stopProps; };
-
-var positionMarker;           // user's position
-
-// map layers
-var stopsGeoJson,
-    radiusLayer,
-    shapeLayer,
-    startEndRouteLayer,
-    stopsOnRouteLayer,
-    nearestStopsLayer;
-
-var suburbLayerGroup = L.layerGroup();
-var point;
+    setSelectedStop = (stopProps) => { selectedStop = stopProps; },
+    suburbLayerGroup = L.layerGroup();
 
 // get the stops.json file from the server
 function getStopsData() {
@@ -49,6 +46,6 @@ function getStopsData() {
     .done(function(geojson) { window.stopsGeoJson = geojson; });
 }
 
-setTimeout(function() { getStopsData(); }, 1);
+getStopsData();
 
 React.render(<AppStartUpSplash />, document.getElementById('app-startup'));

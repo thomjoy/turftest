@@ -2,6 +2,7 @@ import $ from 'jquery';
 import turf from 'turf';
 import _ from 'underscore';
 import 'mapbox.js';
+import PubSub from 'pubsub-js';
 
 L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
 
@@ -90,7 +91,8 @@ class MyMap {
       this.initMap(this.positionMarker.getLatLng());
 
       // render the radius / location info bar
-      //React.render(<StopsWithinRadius numStops={0} />, document.getElementById('services-within-radius'));
+      // React.render(<StopsWithinRadius numStops={0} />, document.getElementById('services-within-radius'));
+      PubSub.publish('map::init::complete');
     };
 
     let locationErrorHandler = () => {
@@ -122,6 +124,8 @@ class MyMap {
 
     // event handlers
     this.positionMarker.on('drag', (evt) => {
+      PubSub.publish('map::drag::start');
+
       var lat = evt.target.getLatLng()['lat'],
           lon = evt.target.getLatLng()['lng'];
 
@@ -130,16 +134,15 @@ class MyMap {
       $('#route-container').hide();
 
       // reset the stop info while dragging
-      //React.render(<CurrentSelectedStop name={"Dragging..."} distance={0} />, document.getElementById('stop-container'));
-
-      // global
       this.userCurrentPosition = turf.point([lon, lat]);
 
       var radialGeoJson = createPointRadius(this.userCurrentPosition, WALKING_DISTANCE, 'kilometers', 120);
       radialGeoJson.properties = this.radialStyle;
-      this.radiusLayer.setGeoJSON(radialGeoJson);
 
+      this.radiusLayer.setGeoJSON(radialGeoJson);
       var numStops = this.showStopsWithinRadius();
+
+      //React.render(<CurrentSelectedStop name={"Dragging..."} distance={0} />, document.getElementById('stop-container'));
       //React.render(<StopsWithinRadius numStops={numStops} />, document.getElementById('services-within-radius'));
     });
 
@@ -196,7 +199,7 @@ class MyMap {
       nearest.properties["marker-symbol"] = "bus";
 
       this.nearestStopsLayer = L.mapbox.featureLayer()
-                          .setGeoJSON(turf.featurecollection([nearestStopsGeoJson, nearest]));
+                                .setGeoJSON(turf.featurecollection([nearestStopsGeoJson, nearest]));
 
       let markerClickHandler = (evt) => {
         var marker = evt.target,
@@ -215,8 +218,6 @@ class MyMap {
               "opacity": 0.5
             };
 
-        //setSelectedStop(feature.properties);
-
         this.nearestStopsLayer.eachLayer(function(_marker) {
           if(_marker._leaflet_id !== _thismarker._leaflet_id)
             _marker.setIcon(L.mapbox.marker.icon(standardIcon));
@@ -234,7 +235,12 @@ class MyMap {
           }
         };
 
-        //React.render(<CurrentSelectedStopDisplay name={selectedStop.stop_name} distance={turf.distance(featureMarker, marker.feature, 'kilometers')} />, document.getElementById('stop-container'));
+        PubSub.publish('map.stop-selected', {
+          selectedStop: feature.properties.stop_name,
+          distanceFromUserPosition: turf.distance(featureMarker, marker.feature, 'kilometers')
+        });
+
+        //setSelectedStop(feature.properties);
 
         // Get routes from this stop
         //getRoutesFromStop(stopId, buildRoutesSelect);
@@ -242,7 +248,6 @@ class MyMap {
 
 
       this.nearestStopsLayer.eachLayer(function(marker) {
-        // click on a marker within walking distance
         marker.on('click', markerClickHandler);
       });
 
