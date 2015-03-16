@@ -18,19 +18,6 @@ function getBondi() {
 }*/
 
 var shapeLayerCache = {};
-
-function toggleShapeLayer(shapeId, action) {
-  switch (action) {
-    case 'show':
-      if (shapeLayerCache[shapeId])
-        map.addLayer(shapeLayerCache[shapeId]);
-      break;
-    case 'hide':
-      map.removeLayer(shapeLayerCache[shapeId]);
-      break;
-  }
-}
-
 var lastColor = 0;
 
 function addShapeWithStopsToMap(stopsData) {

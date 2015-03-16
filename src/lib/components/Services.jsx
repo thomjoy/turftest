@@ -88,7 +88,10 @@ var ToggleRouteOnMap = React.createClass({
           });
     }
     else {
-      window.toggleShapeLayer(this.state.shapeId, (this.state.routeShowingOnMap ? 'hide' : 'show'));
+      PubSub.publish('services.toggle-shape', {
+        shapeId: this.state.shapeId,
+        action: (this.state.routeShowingOnMap ? 'hide' : 'show')
+      });
     }
 
     this.setState({routeShowingOnMap: !this.state.routeShowingOnMap});

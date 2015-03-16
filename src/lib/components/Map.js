@@ -39,18 +39,6 @@ function createPosition(coords) {
 
 var shapeLayerCache = {};
 
-function toggleShapeLayer(shapeId, action) {
-  switch (action) {
-    case 'show':
-      if (shapeLayerCache[shapeId])
-        map.addLayer(shapeLayerCache[shapeId]);
-      break;
-    case 'hide':
-      map.removeLayer(shapeLayerCache[shapeId]);
-      break;
-  }
-}
-
 class MyMap {
   constructor(opts) {
     _.extend(this, opts);
@@ -103,7 +91,26 @@ class MyMap {
       this.addShapeLayer(data.shapeData, data.stopsData);
     };
 
+    let toggleShapeHandler = (msg, data) => {
+      console.log(data);
+      this.toggleShapeLayer(data.shapeId, data.action);
+    };
+
+    // this should be merged into one topic, where we only 'fetch' if we can't 'toggle'
     PubSub.subscribe('services.shape-fetched', shapeFetchedHandler);
+    PubSub.subscribe('services.toggle-shape', toggleShapeHandler);
+  }
+
+  toggleShapeLayer(shapeId, action) {
+    switch (action) {
+      case 'show':
+        if (shapeLayerCache[shapeId])
+          this.map.addLayer(shapeLayerCache[shapeId]);
+        break;
+      case 'hide':
+        this.map.removeLayer(shapeLayerCache[shapeId]);
+        break;
+    }
   }
 
   setupMapHandlers() {
