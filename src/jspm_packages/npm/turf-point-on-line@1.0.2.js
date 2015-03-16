@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-point-on-line@1.0.2/index");

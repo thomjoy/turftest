@@ -1,0 +1,136 @@
+* { font-family: 'Open Sans'; }
+body { margin: 0; padding: 0; }
+.hidden { display: none; }
+
+#app-startup {
+  width: 400px;
+  height: 200px;
+  background-color: #fff;
+  position: absolute;
+  top: 25%;
+  left: 35%;
+  padding: 12px;
+}
+#geolocate { }
+
+#services-within-radius {
+  font-size: 12px;
+  color: #fff;
+  background-color: #4690f2;
+}
+#near-me #stops-nearby { padding: 5px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 8px;}
+#filter-services { margin-top: 10px; }
+#stops-filters {
+  padding: 5px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 8px;
+  background-color: lightslategray;
+  font-size: 11px;
+}
+
+.toggle-filters { padding-top: 2px; }
+.filter { padding-top: 5px; padding-bottom: 5px; }
+.filter label { display: inline-block; }
+.filter-direction label { margin-left: 4px; }
+.filter-time label { width: 50%; margin-right: 10px; }
+.filter-time select { display: block; float: right; }
+
+.left { min-height: 1024px; padding: 0; margin: 0; overflow: hidden; width: 18%; float: left; display: none; background-color: #fff;}
+.right { padding:0; margin: 0; overflow: hidden; width: 82%; float: right;}
+.right.init { width: 100%; }
+
+#overlay { position: absolute; left: 0; width: 100%; min-height: 1024px; height: 100%; background-color: transparent; opacity: 1; }
+#map { width: 100%; min-height: 1024px; height: 100%; }
+.init { width: 100%; height: 100%; }
+.blur { -webkit-filter: blur(5px); }
+
+#header { margin: 0; padding: 10px 8px; font-size: 16px; font-weight: normal; color: #fff; background-color: #3C4E5A; }
+.header { font-weight: normal; font-size: 14px; padding: 0; margin: 0; margin-bottom: 5px; color: #3C4E5A; }
+
+#stop-container {
+  height: 56px;
+  background: mediumpurple url('../img/stop-icon-white-m.png') 4 9 no-repeat;
+  background-color: mediumpurple;
+  padding: 5px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+#stop-name { font-size: 16px; color: #fff; margin: 0; /*padding-left: 34px; text-shadow: 1px 1px 0px purple;*/  }
+#stop-distance { font-size: 12px; color: #fff; margin: 0; /*padding-left: 34px; text-shadow: 1px 1px 0px purple;*/ }
+
+#route-container { padding: 5px; margin-top: 5px; display: none; }
+
+#arriving-soon-container { margin-bottom: 20px; }
+#arriving-soon { list-style: none; margin: 0; padding: 0; padding: 0px 8px; }
+
+.grouped-service-container { padding-bottom: 20px; }
+.grouped-service-container h5 {
+  padding-bottom: 4px;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #777;
+  margin-top: 10px;
+  margin-bottom: 0px;
+}
+.grouped-service-container .service { padding: 4px; margin: 0; height: 46px; background-color: #fafafa; border: 1px solid #fafafa; }
+.grouped-service-container .service:hover { background-color: #e6e6e6; border: 1px solid #ddd; }
+.grouped-service-container .service .service-desc { overflow: hidden; font-size: 14px; color: #333; padding: 2px 2px; cursor: pointer; }
+.grouped-service-container .service .service-desc .bus-headsign { padding: 1px; float: left;  }
+.grouped-service-container .service .service-desc .bus-number {
+  background: #2775DB;
+  text-shadow: 0px 1px 0px blue;
+  display: inline-block;
+  color: #fff;
+  padding: 1px 2px;
+  min-width: 34px;
+  text-align: center;
+  margin-right: 10px;
+  margin-top: 5px;
+  float: left;
+}
+
+.grouped-service-container .service .service-actions .show-route {
+  font-size: 11px;
+  margin-top: -8px;
+  float: left;
+  margin-left: 47px;
+  color: darkgray;
+  cursor: pointer;
+}
+.grouped-service-container .service .service-actions .show-route:hover { color: #333; }
+
+
+#shape-container { padding: 5px; }
+#shape-container #shape-info { margin-top: 0px; }
+.shape-meta { font-size: 12px; margin: 0; padding-bottom: 4px; color: lightblue; }
+.stop-on-shape { font-size: 11px; padding: 1px 2px; }
+.stop-on-shape:nth-child(odd) { background-color: #eee; }
+.stop-on-shape.highlight { background-color: mediumpurple; color: #fff; }
+.stop-on-shape.match-stop { background-color: cornflowerblue; color: #fff;  }
+.stop-on-shape strong { display: inline-block; margin-right: 8px; }
+
+.leaflet-popup-content .stop-name { padding-bottom: 8px; display: inline-block; }
+.leaflet-popup-content .stop-id { font-size: 10px; color: #999; }
+
+#service-info { padding-top: 5px; }
+#service-info div { color: #3C4E5A; font-weight: normal; }
+
+#layers-list {
+  position: absolute;
+  right: 1%;
+  top: 2%;
+  width: 240px;
+  height: auto;
+  padding: 10px;
+  background-color: #222;
+  color: #fafafa;
+}
+#layers-list ul { list-style-type: none; margin: 0px; padding: 0px; }
+#layers-list ul li { padding: 3px 0px; cursor: pointer; }
+#layers-list ul li.noshow { }
+#layers-list ul li.noshow span { color: #666;  }
+.shapeColor { display: inline-block; height: 6px; width: 12px; margin-right: 6px; }

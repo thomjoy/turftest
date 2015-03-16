@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-invariant@1.0.3/index");

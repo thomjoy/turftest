@@ -1,0 +1,68 @@
+<html>
+<head>
+  <title>Turf Test</title>
+  <!--<script src="/src/components/semantic-ui/dist/semantic.js"></script>-->
+
+  <link href="https://api.tiles.mapbox.com/mapbox.js/v2.1.5/mapbox.css" rel="stylesheet" />
+  <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,600,300' rel='stylesheet' type='text/css'>
+
+  <link href="/src/style/style.css" rel="stylesheet" />
+  <link href="/src/components/semantic-ui/dist/semantic.css" rel="stylesheet" />
+  <link href="/src/components/semantic-ui/dist/components/dropdown.css" />
+</head>
+<body>
+  <div class="left ui">
+    <h1 id="header">NSW Buses Explorer</h1>
+
+    <!-- radius info -->
+    <div id="services-within-radius"></div>
+
+    <!-- selected stop info -->
+    <div id="stop-container"></div>
+
+    <!-- routes -->
+    <div id="route-container">
+      <!-- Tabbed Menu -->
+      <div class="ui fluid tabular menu">
+        <a class="item active" data-tab="arriving-soon">Arriving Soon</a>
+        <a class="item" data-tab="all-services">All Services</a>
+      </div>
+
+      <div id="arriving-soon-container" class="ui tab active" data-tab="arriving-soon"></div>
+
+      <div class="ui tab" data-tab="all-services">
+        <div id="all-routes-container">
+          <div class="ui segment basic">
+            <select id="route-select" class="ui fluid search selection dropdown"></select>
+          </div>
+        </div>
+        <!-- list of stops on a shape -->
+        <div id="shape-container">
+          <div id="shape-info">
+            <div class="header" id="shape-meta"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right init">
+    <div id="map" class="blur init dark"></div>
+  </div>
+
+  <div id="layers-list"></div>
+  <div id="app-startup"></div>
+
+
+  <!-- The App -->
+  <script src='/src/jspm_packages/traceur.js'></script>
+  <script src='/src/jspm_packages/es6-module-loader.js'></script>
+  <script src='/src/jspm_packages/system.js'></script>
+  <script src='/src/config.js'></script>
+  <script>
+    System.import('lib/bootstrap.jsx!').then(function(data) {
+      System.import('lib/application.jsx!');
+    });
+  </script>
+</body>
+</html>

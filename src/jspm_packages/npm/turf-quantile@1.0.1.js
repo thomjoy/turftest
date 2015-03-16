@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-quantile@1.0.1/index");

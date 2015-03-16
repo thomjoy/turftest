@@ -1,0 +1,1 @@
+module.exports = require("npm:simplify-js@1.2.1/simplify");

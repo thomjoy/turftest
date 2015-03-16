@@ -1,0 +1,1 @@
+module.exports = require("npm:mapbox.js@2.1.5/src/index");

@@ -1,0 +1,1 @@
+module.exports = require("npm:monotone-convex-hull-2d@1.0.1/index");

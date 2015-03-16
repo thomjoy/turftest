@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-centroid@1.1.2/index");

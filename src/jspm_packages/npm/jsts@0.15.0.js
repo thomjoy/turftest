@@ -1,0 +1,1 @@
+module.exports = require("npm:jsts@0.15.0/index");

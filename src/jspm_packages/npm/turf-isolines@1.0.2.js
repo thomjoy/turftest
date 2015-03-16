@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-isolines@1.0.2/index");

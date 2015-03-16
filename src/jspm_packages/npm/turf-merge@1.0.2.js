@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-merge@1.0.2/index");

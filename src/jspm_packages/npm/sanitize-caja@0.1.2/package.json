@@ -1,0 +1,27 @@
+{
+  "name": "sanitize-caja",
+  "version": "0.1.2",
+  "description": "sanitize html using caja and reasonable assumptions",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "tape test/*.js",
+    "cov": "istanbul cover test/*.js"
+  },
+  "keywords": [
+    "sanitize",
+    "html"
+  ],
+  "author": "Tom MacWright",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+    "tape": "~2.14.0",
+    "istanbul": "~0.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mapbox/sanitize-caja.git"
+  }
+}

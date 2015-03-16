@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-remove@1.0.1/index");

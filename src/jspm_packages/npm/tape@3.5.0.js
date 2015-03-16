@@ -1,0 +1,1 @@
+module.exports = require("npm:tape@3.5.0/index");

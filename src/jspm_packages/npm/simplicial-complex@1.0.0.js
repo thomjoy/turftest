@@ -1,0 +1,1 @@
+module.exports = require("npm:simplicial-complex@1.0.0/topology");

@@ -1,0 +1,1 @@
+module.exports = require("npm:turf-median@1.0.2/index");
