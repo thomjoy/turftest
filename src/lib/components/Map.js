@@ -37,6 +37,20 @@ function createPosition(coords) {
   });
 }
 
+var shapeLayerCache = {};
+
+function toggleShapeLayer(shapeId, action) {
+  switch (action) {
+    case 'show':
+      if (shapeLayerCache[shapeId])
+        map.addLayer(shapeLayerCache[shapeId]);
+      break;
+    case 'hide':
+      map.removeLayer(shapeLayerCache[shapeId]);
+      break;
+  }
+}
+
 class MyMap {
   constructor(opts) {
     _.extend(this, opts);
@@ -70,6 +84,26 @@ class MyMap {
       "stroke-width": 2,
       "stroke-opacity": 0.5
     };
+
+    this.coloursArray = [
+      '#d53e4f',
+      '#fc8d59',
+      '#fee08b',
+      '#ffffbf',
+      '#e6f598',
+      '#99d594',
+      '#3288bd'];
+    this.lastColor = 0;
+
+    // holds the circles (stops) + shape for a route
+    // we map this to a Layer in the toggle Layer panel, to ensure we remove all compoonents of a route
+    this.shapeLayerGroup = L.layerGroup();
+
+    let shapeFetchedHandler = (msg, data) => {
+      this.addShapeLayer(data.shapeData, data.stopsData);
+    };
+
+    PubSub.subscribe('services.shape-fetched', shapeFetchedHandler);
   }
 
   setupMapHandlers() {
@@ -82,17 +116,12 @@ class MyMap {
       this.positionMarker = createPosition(location.latlng);
       this.positionMarker.addTo(this.map);
 
-      $('#map').removeClass('blur');
-      $('#map').removeClass('init');
+      $('#map').removeClass('blur').removeClass('init');
       $('.right').removeClass('init');
       $('.left').show();
 
       this.map.setView([location.latitude, location.longitude], 16);
       this.initMap(this.positionMarker.getLatLng());
-
-      // render the radius / location info bar
-      // React.render(<StopsWithinRadius numStops={0} />, document.getElementById('services-within-radius'));
-      PubSub.publish('map::init::complete');
     };
 
     let locationErrorHandler = () => {
@@ -100,8 +129,7 @@ class MyMap {
       $('#geolocate').html('Position could not be found');
       $('#app-startup').hide().delay(1);
 
-      $('#map').removeClass('blur');
-      $('#map').removeClass('init');
+      $('#map').removeClass('blur').removeClass('init');
       $('.right').removeClass('init');
       $('.left').show();
 
@@ -110,7 +138,7 @@ class MyMap {
       this.positionMarker.addTo(this.map);
       this.map.setView(defaultPosition, 15);
 
-      this.initMap(positionMarker.getLatLng());
+      this.initMap(this.positionMarker.getLatLng());
     };
 
     this.map.on('locationfound', locationFoundHandler);
@@ -118,14 +146,12 @@ class MyMap {
   }
 
   initMap(startingPosition) {
-
     let WALKING_DISTANCE = 0.25;
     this.radiusLayer = this.createRadiusLayer({lat: startingPosition.lat, lng: startingPosition.lng}, WALKING_DISTANCE);
+    PubSub.publish('map.init-complete', {distance: 0, numStops: 0});
 
     // event handlers
     this.positionMarker.on('drag', (evt) => {
-      PubSub.publish('map::drag::start');
-
       var lat = evt.target.getLatLng()['lat'],
           lon = evt.target.getLatLng()['lng'];
 
@@ -141,9 +167,7 @@ class MyMap {
 
       this.radiusLayer.setGeoJSON(radialGeoJson);
       var numStops = this.showStopsWithinRadius();
-
-      //React.render(<CurrentSelectedStop name={"Dragging..."} distance={0} />, document.getElementById('stop-container'));
-      //React.render(<StopsWithinRadius numStops={numStops} />, document.getElementById('services-within-radius'));
+      PubSub.publish('map.position-update', {distance: 0, numStops: numStops});
     });
 
     this.positionMarker.on('click', (evt) => {
@@ -155,7 +179,6 @@ class MyMap {
   }
 
   createRadiusLayer(aroundPoint, radiusInKm) {
-    // the center of the radial, initially.
     this.userCurrentPosition = turf.point([aroundPoint.lng, aroundPoint.lat]);
 
     var radiusLayer = L.mapbox.featureLayer().addTo(this.map),
@@ -205,7 +228,6 @@ class MyMap {
         var marker = evt.target,
             feature = marker.feature,
             stopId = feature.properties.stop_id,
-            _thismarker = evt,
             highLightedStopIcon = {
               "marker-color": "9370D8",
               "marker-size": "small",
@@ -219,7 +241,8 @@ class MyMap {
             };
 
         this.nearestStopsLayer.eachLayer(function(_marker) {
-          if(_marker._leaflet_id !== _thismarker._leaflet_id)
+          //console.log(_marker._leaflet_id, marker._leaflet_id);
+          if(_marker._leaflet_id !== marker._leaflet_id)
             _marker.setIcon(L.mapbox.marker.icon(standardIcon));
         });
 
@@ -236,16 +259,11 @@ class MyMap {
         };
 
         PubSub.publish('map.stop-selected', {
+          stopId: stopId,
           selectedStop: feature.properties.stop_name,
           distanceFromUserPosition: turf.distance(featureMarker, marker.feature, 'kilometers')
         });
-
-        //setSelectedStop(feature.properties);
-
-        // Get routes from this stop
-        //getRoutesFromStop(stopId, buildRoutesSelect);
       };
-
 
       this.nearestStopsLayer.eachLayer(function(marker) {
         marker.on('click', markerClickHandler);
@@ -264,6 +282,142 @@ class MyMap {
 
     this.addNearestStopsLayer(stopsWithinRadius);
     return stopsWithinRadius.features.length;
+  }
+
+  addShapeLayer(shapeData, stopsData) {
+    var nextColor = this.lastColor++ > (this.coloursArray.length - 1) ? 0 : this.lastColor,
+        shapeColor = this.coloursArray[nextColor];
+
+    this.lastColor = nextColor;
+
+    var classCtx = this; // need this for nested event handlers
+    var shapeId = shapeData.properties.shape_id.shape_id,
+        routeLength = (turf.lineDistance(shapeData, 'kilometers')).toFixed(2),
+        shapeStyle = {
+          "color": shapeColor,
+          "weight": 3,
+          "opacity": 1
+        },
+        routeId = shapeData.properties.shape_id.route_id.split('_')[1],
+        tripHeadSign = shapeData.properties.shape_id.trip_headsign,
+        shapeLayerPopup = '<div>' + routeId + ' ' + tripHeadSign + '</div>' +
+                          '<div>' + stopsData.length + ' stops in ' + routeLength + 'km</div>';
+
+    if( ! shapeLayerCache[shapeId] ) {
+      this.shapeLayer = L.geoJson(shapeData, {
+        onEachFeature: function(feature, layer) {
+          layer.setStyle(shapeStyle);
+          layer.on({
+            add: () => {
+              classCtx.map.fitBounds(classCtx.shapeLayer.getBounds());
+              layer.bindPopup(shapeLayerPopup);
+
+              var circles = [],
+                  circleOptions = {
+                    color: shapeColor,        // Stroke color
+                    opacity: 1,               // Stroke opacity
+                    weight: 2,                // Stroke weight
+                    fillColor: '#fff',        // Fill color
+                    fillOpacity: 1,           // Fill opacity
+                    radius: 3
+                  },
+                  numStops = (stopsData.length - 1);
+
+              // plot stops on shape as circles
+              stopsData.forEach(function(stop) {
+                circles.push(L.circleMarker([stop.stop_lat, stop.stop_lon], circleOptions));
+              });
+
+              var circlesGeoJson = {
+                type: "FeatureCollection",
+                features: (function() {
+                  return circles.map(function(circle, idx) {
+                    var geojson = circle.toGeoJSON();
+
+                    if( idx === 0 )
+                      geojson.properties.startRoute = true;
+                    if( idx === numStops )
+                      geojson.properties.endRoute = true;
+                    if( stopsData[idx].stop_id == window.APP.selectedStop.stopId )
+                      geojson.properties.currentSelectedStop = true;
+
+                    geojson.properties.stop_id = stopsData[idx].stop_id;
+                    geojson.properties.title = '<div>' + routeId + ' ' + tripHeadSign + '</div>' +
+                                               '<strong class="stop-name">' + stopsData[idx].stop_name + '</strong>' +
+                                               '<div>Stop ' + (idx + 1) + ' of ' + (numStops + 1) + '</div>';
+
+                    return geojson;
+                  });
+                })()
+              };
+
+              // Stops, as indicated by circles on the shape
+              this.stopsOnRouteLayer = L.geoJson(circlesGeoJson, {
+                pointToLayer: function (feature, latlng) {
+                  if( feature.properties.startRoute )
+                    circleOptions.color = '#3cb371'; //mediumseagreen
+                  if( feature.properties.endRoute )
+                    circleOptions.color = '#cd5c5c'; //indianred
+                  if( feature.properties.currentSelectedStop )
+                    circleOptions.color = '#9370DB'; // mediumpurple
+                  if( ! (feature.properties.endRoute || feature.properties.startRoute || feature.properties.currentSelectedStop))
+                    circleOptions.color = shapeColor;
+
+                  return L.circleMarker(latlng, circleOptions);
+                },
+
+                onEachFeature: function(feature, layer) {
+                  layer.bindPopup(feature.properties.title);
+
+                  layer.on('mouseover', function(evt) {
+                    var stopId = feature.properties.stop_id;
+                    $('#shape-info .stop-on-shape').filter(function() {
+                      return $(this).data('stop_id') == stopId;
+                    }).addClass('match-stop');
+                    layer.openPopup();
+                  });
+
+                  layer.on('mouseout', function(evt) {
+                    $('.match-stop').removeClass('match-stop');
+                  });
+                }
+              });
+
+              classCtx.shapeLayerGroup.addLayer(classCtx.stopsOnRouteLayer);
+            },
+            click: function(evt) { console.log('Clicked on shape'); },
+            mouseover: function() { layer.openPopup(); },
+            mouseout: function() { layer.closePopup(); }
+          });
+        },
+
+      });
+
+      this.shapeLayerGroup.addLayer(this.shapeLayer);
+      shapeLayerCache[shapeId] = this.shapeLayerGroup;
+    }
+    else {
+      console.log('Found shape layer ' + shapeId + ' in cache');
+      this.shapeLayerGroup = shapeLayerCache[shapeId];
+    }
+
+    this.map.removeLayer(this.nearestStopsLayer);
+    this.shapeLayerGroup.addTo(this.map);
+
+    console.log(this.shapeLayerGroup);
+
+    // messy
+    var layer = {
+      id: shapeId,
+      color: shapeColor,
+      name: tripHeadSign,
+      route: routeId,
+      layers: [this.shapeLayer, this.stopsOnRouteLayer],
+      visibleOnMap: true
+    };
+
+    PubSub.publish('map.shape.added', layer);
+    return shapeId;
   }
 }
 

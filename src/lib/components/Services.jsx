@@ -1,20 +1,38 @@
 import React from 'react';
 import $ from 'jquery';
+import PubSub from 'pubsub-js';
 
-// Arriving Soon Tab
-var ServicesArrivingSoonTab = React.createClass({
+function getStopsForShape(opts, cb) {
+  var endpoint = 'http://127.0.0.1:3001/trip?idType=';
+  if(opts.shape_id)
+    endpoint += 'shape_id&id=' + opts.shape_id;
+  if(opts.trip_id)
+    endpoint += 'trip_id&id=' + opts.trip_id;
+
+  return Promise.resolve($.ajax({url: endpoint}));
+}
+
+function getShapeData(opts, stopsData) {
+  var endpoint = 'http://127.0.0.1:3001/shapes?idType=';
+  if(opts.shape_id)
+    endpoint += 'shape_id&id=' + opts.shape_id;
+  if(opts.trip_id)
+    endpoint += 'trip_id&id=' + opts.trip_id;
+
+  return Promise.resolve($.ajax({url: endpoint}));
+  //.done(function(geojson) { addShapeLayer(geojson, stopsData); });
+}
+
+var Service = React.createClass({
   render: function() {
-    var p = this.props.services,
-        serviceGroups = (Object.keys(p)).map(function(key) {
-          var intKey = parseInt(key, 10),
-              serviceGroup = p[intKey];
-          return <ServiceGroup key={intKey} minutes={intKey} services={serviceGroup} />
-        });
-
-    return (
-      <div id="arriving-soon" className="ui segment basic">
-        {serviceGroups}
-      </div>
+    return(
+      <div className="service">
+          <div className="service-desc">
+            <strong className="bus-number">{this.props.data.route_id.split('_')[1]}</strong>
+            <div className="bus-headsign">{this.props.data.trip_headsign}</div>
+          </div>
+          <ServiceActions tripId={this.props.data.trip_id} />
+        </div>
     );
   }
 });
@@ -57,12 +75,17 @@ var ToggleRouteOnMap = React.createClass({
   handleClick: function() {
     var ctx = this;
     if (! this.state.routeFetched) {
-      window.getStopsForShape({trip_id: this.props.tripId}, function(stopsData) {
-        $.when(getShapeData({trip_id: this.props.tripId}, stopsData)).done(function(shapeData) {
-          this.setState({shapeId: shapeData.properties.shape_id.shape_id});
-          this.setState({routeFetched: true});
-        }.bind(ctx));
-      }.bind(ctx));
+
+      // Fetch the shape from the API
+        getStopsForShape({trip_id: this.props.tripId})
+          .then(stopsData => {
+            getShapeData({trip_id: this.props.tripId}, stopsData)
+              .then(shapeData => {
+                this.setState({shapeId: shapeData.properties.shape_id.shape_id});
+                this.setState({routeFetched: true});
+                PubSub.publish('services.shape-fetched', {shapeData: shapeData, stopsData: stopsData});
+              });
+          });
     }
     else {
       window.toggleShapeLayer(this.state.shapeId, (this.state.routeShowingOnMap ? 'hide' : 'show'));
@@ -84,14 +107,17 @@ var ToggleRouteOnMap = React.createClass({
 
 export default React.createClass({
   render: function() {
-    return(
-      <div className="service">
-          <div className="service-desc">
-            <strong className="bus-number">{this.props.data.route_id.split('_')[1]}</strong>
-            <div className="bus-headsign">{this.props.data.trip_headsign}</div>
-          </div>
-          <ServiceActions tripId={this.props.data.trip_id} />
-        </div>
+    var p = this.props.services,
+        serviceGroups = (Object.keys(p)).map(function(key) {
+          var intKey = parseInt(key, 10),
+              serviceGroup = p[intKey];
+          return <ServiceGroup key={intKey} minutes={intKey} services={serviceGroup} />
+        });
+
+    return (
+      <div id="arriving-soon" className="ui segment basic">
+        {serviceGroups}
+      </div>
     );
   }
 });
