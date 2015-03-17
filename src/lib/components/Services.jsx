@@ -20,7 +20,6 @@ function getShapeData(opts, stopsData) {
     endpoint += 'trip_id&id=' + opts.trip_id;
 
   return Promise.resolve($.ajax({url: endpoint}));
-  //.done(function(geojson) { addShapeLayer(geojson, stopsData); });
 }
 
 var Service = React.createClass({

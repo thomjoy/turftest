@@ -1,7 +1,8 @@
 import React from 'react';
 import $ from 'jquery';
+import PubSub from 'pubsub-js';
 
-/*var FilterServicesButton = React.createClass({
+var FilterServicesButton = React.createClass({
   render: function() {
     return (
       <div id="filter-services" onClick={this.props.onClick.bind(null, this)} className="ui button mini blue">{this.props.text}</div>
@@ -11,7 +12,7 @@ import $ from 'jquery';
 
 var FilterServicesCheckbox = React.createClass({
   render: function() {
-    return(
+    return (
       <div className="filter filter-direction">
         <input id="direction_id" name="direction_id" type="checkbox" value={this.props.value} onClick={this.props.onClick.bind(null, this)} />
         <label>Towards CBD</label>
@@ -23,7 +24,7 @@ var FilterServicesCheckbox = React.createClass({
 // Select
 var DistanceFromCurrentPositionSelect = React.createClass({
   render: function() {
-    return(
+    return (
       <select id="distance-filter" onChange={this.props.onChange.bind(null, this)}>
         <option value="0.25">250m</option>
         <option value="0.5">500m</option>
@@ -36,7 +37,7 @@ var DistanceFromCurrentPositionSelect = React.createClass({
 // Select
 var ArrivalTimeInMinutesFilter = React.createClass({
   render: function() {
-    return(
+    return (
       <div className="filter filter-time">
         <label>Only show stops with buses arriving in:</label>
         <select id="arrival-time-filter" onChange={this.props.onChange.bind(null, this)}>
@@ -50,7 +51,7 @@ var ArrivalTimeInMinutesFilter = React.createClass({
 });
 
 // Service
-var ServiceDisplay = React.createClass({
+export default React.createClass({
   getInitialState: function() {
     return {
       numStops: 0,
@@ -63,26 +64,19 @@ var ServiceDisplay = React.createClass({
   },
 
   componentDidMount: function() {
-    this.updateDistanceFilter();
     this.updateArrivalTime();
     this.updateDirectionFilter();
   },
 
   updateDistanceFilter: function(component, event) {
-    var pos = positionMarker.getLatLng(),
-        distanceFilter = parseFloat($('#distance-filter option:selected').val(), 10);
-
+    var distanceFilter = parseFloat($('#distance-filter option:selected').val(), 10);
     this.setState({distanceFilter: distanceFilter});
+    //debugger;
 
-    window.map.removeLayer(window.radiusLayer);
-    window.createRadiusLayer({lat: pos.lat, lng: pos.lng}, distanceFilter);
-
-    // search again with the new radius
-    if (window.WALKING_DISTANCE !== distanceFilter)
-      window.WALKING_DISTANCE = distanceFilter;
-
-    var numStops = window.showStopsWithinRadius(WALKING_DISTANCE);
-    this.setProps({numStops: numStops});
+    PubSub.publish('filters.radius-changed', {radius: distanceFilter})
+    PubSub.subscribe('services.update-num-stops-in-radius', (msg, data) => {
+      this.setProps({numStops: data.numStops});
+    });
   },
 
   updateArrivalTime: function(component, event) {
@@ -92,30 +86,26 @@ var ServiceDisplay = React.createClass({
 
   updateDirectionFilter: function(component, event) {
     var directionId = $('#direction_id').is(':checked') ? 0 : 1;
-    this.setState({directionFilter: directionId});
+    this.setState({directionIdFilter: directionId});
   },
 
   filterServices: function() {
-    var pos = window.positionMarker.getLatLng(),
-        ctx = this;
+    var ctx = this;
 
     $.ajax({
       url: 'http://localhost:3001/filter',
       data: {
-        stop_lat: pos.lat,
-        stop_lon: pos.lng,
+        stop_lat: window.APP.currentUserPosition.lat,
+        stop_lon: window.APP.currentUserPosition.lng,
         within_km: this.state.distanceFilter,
-        direction_id: this.state.directionFilter,
+        direction_id: this.state.directionIdFilter,
         within_minutes: this.state.minutesFilter
       },
-      beforeSend: function() {
-        this.setState({filtering: true});
-      }.bind(ctx)
-    })
-    .done(function(data) {
-      this.setState({filtering: false});
-      window.addNearestStopsLayer(data.layer);
-    }.bind(ctx));
+      beforeSend: function() { ctx.setState({filtering: true}); }
+    }).done(function(filtered) {
+      ctx.setState({filtering: false});
+      PubSub.publish('services.filtered', filtered);
+    });
   },
 
   toggleFilterPanel: function() {
@@ -123,7 +113,7 @@ var ServiceDisplay = React.createClass({
   },
 
   render: function() {
-    var format = function(num) {
+    var formatFn = function(num) {
           switch (num) {
             case 0:
               return 'No stops';
@@ -133,25 +123,17 @@ var ServiceDisplay = React.createClass({
               return num + ' stops';
           }
         },
-        numStops = format(this.props.numStops);
+        numStops = formatFn(this.props.numStops);
 
-    return(
-      <div id="near-me" className="ui">
+    return (<div id="near-me" className="ui">
         <div id="stops-nearby">{numStops} within <DistanceFromCurrentPositionSelect onChange={this.updateDistanceFilter} /> of you
-          <div className="toggle-filters" onClick={this.toggleFilterPanel} className="">{this.state.filterPanelShowing ? '- hide filters' : '+ show filters'}</div>
+          <div className="toggle-filters" onClick={this.toggleFilterPanel}>{this.state.filterPanelShowing ? '- hide filters' : '+ show filters'}</div>
         </div>
         <div id="stops-filters" className={this.state.filterPanelShowing ? '' : 'hidden'}>
           <ArrivalTimeInMinutesFilter onChange={this.updateArrivalTime} />
           <FilterServicesCheckbox value={0} onClick={this.updateDirectionFilter} />
-          <FilterServicesButton ref="filterButton" text={this.state.filtering ? "Filtering..." : "Apply Filter"} onClick={this.filterServices} />
+          <FilterServicesButton ref="filterButton" onClick={this.filterServices} text={this.state.filtering ? "Filtering..." : "Apply Filter"} />
         </div>
-      </div>
-    )
+      </div>);
   }
-});*/
-
-export default React.createClass({
-  render: function() {
-    return(<div>Testing</div>);
-  }
-})
+});

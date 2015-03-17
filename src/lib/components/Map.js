@@ -44,7 +44,7 @@ class MyMap {
     _.extend(this, opts);
     this.map = L.mapbox.map(this.mapDiv, this.proj);
 
-    // TODO: use this.pont to replace point global
+    // represents the current user position
     this.userCurrentPosition = null;
 
     // L.Marker, representing users position
@@ -96,9 +96,29 @@ class MyMap {
       this.toggleShapeLayer(data.shapeId, data.action);
     };
 
+    let radiusChangedHandler = (msg, data) => {
+      this.map.removeLayer(this.radiusLayer);
+
+      var pos = window.APP.currentUserPosition;
+      this.radiusLayer = this.createRadiusLayer({lat: pos.lat, lng: pos.lng}, data.radius);
+
+      // search again with the new radius
+      if (window.APP.filters.currentRadiusInKm !== data.radius)
+       window.APP.filters.currentRadiusInKm = data.radius;
+
+      var numStops = this.showStopsWithinRadius(data.radius);
+      PubSub.publish('services.update-num-stops-in-radius', {numStops: numStops});
+    }
+
+    let servicesFilteredHandler = (msg, data) => {
+      this.addNearestStopsLayer(data.layer);
+    }
+
     // this should be merged into one topic, where we only 'fetch' if we can't 'toggle'
     PubSub.subscribe('services.shape-fetched', shapeFetchedHandler);
     PubSub.subscribe('services.toggle-shape', toggleShapeHandler);
+    PubSub.subscribe('services.filtered', servicesFilteredHandler);
+    PubSub.subscribe('filters.radius-changed', radiusChangedHandler);
   }
 
   toggleShapeLayer(shapeId, action) {
@@ -129,6 +149,7 @@ class MyMap {
 
       this.map.setView([location.latitude, location.longitude], 16);
       this.initMap(this.positionMarker.getLatLng());
+      this.globalizePos();
     };
 
     let locationErrorHandler = () => {
@@ -146,15 +167,21 @@ class MyMap {
       this.map.setView(defaultPosition, 15);
 
       this.initMap(this.positionMarker.getLatLng());
+      this.globalizePos();
     };
 
     this.map.on('locationfound', locationFoundHandler);
     this.map.on('locationerror', locationErrorHandler);
   }
 
+  globalizePos() {
+    window.APP.currentUserPosition.lat = this.positionMarker.getLatLng().lat;
+    window.APP.currentUserPosition.lng = this.positionMarker.getLatLng().lng;
+    this.currentUserPosition = turf.point([this.positionMarker.getLatLng().lng, this.positionMarker.getLatLng().lat]);
+  }
+
   initMap(startingPosition) {
-    let WALKING_DISTANCE = 0.25;
-    this.radiusLayer = this.createRadiusLayer({lat: startingPosition.lat, lng: startingPosition.lng}, WALKING_DISTANCE);
+    this.radiusLayer = this.createRadiusLayer({lat: startingPosition.lat, lng: startingPosition.lng}, window.APP.filters.currentRadiusInKm);
     PubSub.publish('map.init-complete', {distance: 0, numStops: 0});
 
     // event handlers
@@ -169,7 +196,10 @@ class MyMap {
       // reset the stop info while dragging
       this.userCurrentPosition = turf.point([lon, lat]);
 
-      var radialGeoJson = createPointRadius(this.userCurrentPosition, WALKING_DISTANCE, 'kilometers', 120);
+      // TODO: fix this! for now, set this global
+      this.globalizePos();
+
+      var radialGeoJson = createPointRadius(this.userCurrentPosition, window.APP.filters.currentRadiusInKm, 'kilometers', 120);
       radialGeoJson.properties = this.radialStyle;
 
       this.radiusLayer.setGeoJSON(radialGeoJson);
@@ -281,8 +311,7 @@ class MyMap {
   }
 
   showStopsWithinRadius(searchRadius) {
-    var WALKING_DISTANCE = 0.25;
-    var radius = searchRadius || WALKING_DISTANCE,
+    var radius = searchRadius || window.APP.filters.currentRadiusInKm,
         stopsWithinRadius = turf.featurecollection(window.stopsGeoJson.features.filter((stop) => {
           if( turf.distance(stop, this.userCurrentPosition, 'kilometers') <= radius ) return true;
         }));

@@ -242,6 +242,11 @@ System.config({
       "process": "github:jspm/nodelibs-process@0.1.1",
       "through": "npm:through@2.3.6"
     },
+    "npm:envify@3.4.0": {
+      "jstransform": "npm:jstransform@10.1.0",
+      "process": "github:jspm/nodelibs-process@0.1.1",
+      "through": "npm:through@2.3.6"
+    },
     "npm:esprima-fb@10001.1.0-dev-harmony-fb": {
       "fs": "github:jspm/nodelibs-fs@0.1.1",
       "process": "github:jspm/nodelibs-process@0.1.1"
@@ -444,7 +449,7 @@ System.config({
     },
     "npm:react@0.13.0": {
       "buffer": "github:jspm/nodelibs-buffer@0.1.0",
-      "envify": "npm:envify@3.3.0",
+      "envify": "npm:envify@3.4.0",
       "process": "github:jspm/nodelibs-process@0.1.1"
     },
     "npm:readable-stream@1.1.13": {
@@ -454,7 +459,8 @@ System.config({
       "inherits": "npm:inherits@2.0.1",
       "isarray": "npm:isarray@0.0.1",
       "process": "github:jspm/nodelibs-process@0.1.1",
-      "stream": "npm:stream-browserify@1.0.0",
+      "stream": "github:jspm/nodelibs-stream@0.1.0",
+      "stream-browserify": "npm:stream-browserify@1.0.0",
       "string_decoder": "npm:string_decoder@0.10.31",
       "util": "github:jspm/nodelibs-util@0.1.0"
     },

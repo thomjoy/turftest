@@ -14,6 +14,13 @@ import Stop from 'lib/components/Stop';
 
 window.APP = {
   selectedStop: {},
+  filters: {
+    currentRadiusInKm: 0.25,
+  },
+  currentUserPosition: {
+    lat: null,
+    lng: null
+  }
 };
 
 // Semantic U
@@ -42,10 +49,6 @@ PubSub.subscribe('map.stop-selected', (msg, data) => {
 
    window.APP.selectedStop = new Stop(data);
 
-   // Promise based sequence should go here.
-   // 1. Get routes that leave from this selected stop within the minutes allowed
-   // 2. Add to sidebar
-   // 3. Fetch Shapes.
    $('#route-container').show();
 
    // 1. add Upcoming buses to the Sidebar
@@ -65,37 +68,8 @@ function getRoutesFromStop(stopId, cb) {
 }
 
 function addArrivingSoonServicesToSidebar(arrivingSoonData) {
-  var arrivingSoon = $('#arriving-soon'),
-      segment = $('.segment', '#arriving-soon-container'),
-      arrivingSoonItems = [];
-
+  var segment = $('.segment', '#arriving-soon-container');
   segment.addClass('loading');
-
-  function makeServiceInnerHtml(service) {
-    var routeStr = '<div class="show-route" data-trip_id="' + service.trip_id + '">Show route</div>';
-    return '<li class="service">' +
-            '<div><strong class="bus-number">' + service.route_id.split('_')[1] + '</strong><div class="bus-headsign">' + service.trip_headsign + '</div></div>' +
-            routeStr + '</li>';
-  }
-
-  if( ! Object.keys(arrivingSoonData).length ) {
-    var html = '<li class="service-outer no-service">No Services ' +
-                '<div id="find-later" class="later"> find later</div></li>';
-    arrivingSoonItems.push(html);
-  }
-  else {
-    for( var arrivalTimeInMinutes in arrivingSoonData ) {
-      var grouped = arrivingSoonData[arrivalTimeInMinutes],
-          arr = grouped[0].departure_time.split(':'),
-          depTime = arr[0] + ':' + arr[1],
-          serviceHtml = '<li class="service-outer"><div class="time-segment">Arrives in ' + arrivalTimeInMinutes + 'm (' + depTime + ')</div><ul>';
-
-      grouped.forEach(function(service) { serviceHtml += makeServiceInnerHtml(service); });
-      serviceHtml += '</ul></li>';
-      arrivingSoonItems.push(serviceHtml);
-    }
-  }
-
   setTimeout(function() { segment.removeClass('loading'); }, 500);
 
   React.render(<ServicesArrivingSoonTab services={arrivingSoonData} />, document.getElementById('arriving-soon-container'));
@@ -107,10 +81,8 @@ function getServicesInMinutes(stopId, minutes) {
   }));
 }
 
-
 // map functions
-var WALKING_DISTANCE = 0.25,
-    icon = L.mapbox.marker.icon({
+var icon = L.mapbox.marker.icon({
       "marker-color": "#8E8E8E",
       "title": "where are the stations?",
       "marker-symbol": "pitch",
