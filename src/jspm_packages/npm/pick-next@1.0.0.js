@@ -1,0 +1,1 @@
+module.exports = require("npm:pick-next@1.0.0/pick-next");

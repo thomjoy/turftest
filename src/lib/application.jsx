@@ -26,10 +26,6 @@ window.APP = {
 // Semantic U
 //$('.menu .item').tab();
 //$('.ui.dropdown').dropdown();
-
-// Get the map to add the shape layer
-
-
 PubSub.subscribe('map.init-complete', (msg, data) => {
   // render our location sidebar item
   React.render(<StopsWithinRadius numStops={data.numStops} />,
@@ -58,6 +54,7 @@ PubSub.subscribe('map.stop-selected', (msg, data) => {
 
 PubSub.subscribe('map.shape.added', (msg, layer) => {
   Layers.add(layer);
+  console.log(Layers);
   React.render(<LayersDisplay data={Layers.all()} />, document.getElementById('layers-list'));
 });
 
@@ -87,8 +84,7 @@ var icon = L.mapbox.marker.icon({
       "title": "where are the stations?",
       "marker-symbol": "pitch",
       "marker-size": "small"
-    }),
-    coloursArray = ['#d53e4f', '#fc8d59', '#fee08b', '#ffffbf', '#e6f598', '#99d594', '#3288bd'];
+    });
 
 var selectedStop = {},
     setSelectedStop = (stopProps) => { selectedStop = stopProps; },

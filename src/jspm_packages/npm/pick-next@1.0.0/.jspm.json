@@ -1,0 +1,57 @@
+{
+  "name": "pick-next",
+  "version": "1.0.0",
+  "description": "A small module to allow 'pick next from list' functionality",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "keywords": [
+    "node"
+  ],
+  "author": {
+    "name": "Thom Joy"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^2.1.2",
+    "mocha": "^2.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thomjoy/pick-next.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thomjoy/pick-next/issues"
+  },
+  "homepage": "https://github.com/thomjoy/pick-next",
+  "gitHead": "8cd71ba5a6fdd953e26b6c31f737549907e1be32",
+  "_id": "pick-next@1.0.0",
+  "_shasum": "fac4f7c4b61b0af20d9410de318e874edc498c4e",
+  "_from": ".",
+  "_npmVersion": "2.5.1",
+  "_nodeVersion": "0.12.0",
+  "_npmUser": {
+    "name": "thomjoy",
+    "email": "thomjoy1984@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "thomjoy",
+      "email": "thomjoy1984@gmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "fac4f7c4b61b0af20d9410de318e874edc498c4e",
+    "tarball": "http://registry.npmjs.org/pick-next/-/pick-next-1.0.0.tgz"
+  },
+  "jspm": {},
+  "registry": "npm",
+  "format": "cjs",
+  "ignore": [
+    "node_modules"
+  ],
+  "dependencies": {
+    "chai": "chai@^2.1.2"
+  }
+}

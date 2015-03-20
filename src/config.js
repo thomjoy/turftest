@@ -12,6 +12,7 @@ System.config({
     "jquery": "github:components/jquery@2.1.3",
     "jsx": "github:floatdrop/plugin-jsx@1.1.0",
     "mapbox.js": "npm:mapbox.js@2.1.5",
+    "pick-next": "npm:pick-next@1.0.0",
     "pubsub-js": "npm:pubsub-js@1.5.2",
     "react": "npm:react@0.13.0",
     "turf": "npm:turf@2.0.0",
@@ -141,6 +142,13 @@ System.config({
       "ieee754": "npm:ieee754@1.1.4",
       "is-array": "npm:is-array@1.0.1"
     },
+    "npm:chai@2.1.2": {
+      "assertion-error": "npm:assertion-error@1.0.0",
+      "buffer": "github:jspm/nodelibs-buffer@0.1.0",
+      "deep-eql": "npm:deep-eql@0.1.3",
+      "process": "github:jspm/nodelibs-process@0.1.1",
+      "systemjs-json": "github:systemjs/plugin-json@0.1.0"
+    },
     "npm:clone@0.2.0": {
       "buffer": "github:jspm/nodelibs-buffer@0.1.0",
       "util": "github:jspm/nodelibs-util@0.1.0",
@@ -220,6 +228,10 @@ System.config({
       "pbkdf2-compat": "npm:pbkdf2-compat@3.0.2",
       "public-encrypt": "npm:public-encrypt@2.0.0",
       "randombytes": "npm:randombytes@2.0.1"
+    },
+    "npm:deep-eql@0.1.3": {
+      "buffer": "github:jspm/nodelibs-buffer@0.1.0",
+      "type-detect": "npm:type-detect@0.1.1"
     },
     "npm:diffie-hellman@3.0.1": {
       "bn.js": "npm:bn.js@1.3.0",
@@ -417,6 +429,9 @@ System.config({
       "path": "github:jspm/nodelibs-path@0.1.0",
       "process": "github:jspm/nodelibs-process@0.1.1",
       "systemjs-json": "github:systemjs/plugin-json@0.1.0"
+    },
+    "npm:pick-next@1.0.0": {
+      "chai": "npm:chai@2.1.2"
     },
     "npm:public-encrypt@2.0.0": {
       "bn.js": "npm:bn.js@1.3.0",

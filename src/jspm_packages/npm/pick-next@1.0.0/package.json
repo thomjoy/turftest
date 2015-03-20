@@ -1,0 +1,32 @@
+{
+  "name": "pick-next",
+  "version": "1.0.0",
+  "description": "A small module to allow 'pick next from list' functionality",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "keywords": [
+    "node"
+  ],
+  "author": "Thom Joy",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^2.1.2",
+    "mocha": "^2.2.1"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "chai": "^2.1.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thomjoy/pick-next.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thomjoy/pick-next/issues"
+  },
+  "homepage": "https://github.com/thomjoy/pick-next"
+}

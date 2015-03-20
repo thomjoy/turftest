@@ -3,6 +3,7 @@ import turf from 'turf';
 import _ from 'underscore';
 import 'mapbox.js';
 import PubSub from 'pubsub-js';
+import PickNext from 'pick-next';
 
 L.mapbox.accessToken = 'pk.eyJ1IjoidGhvbWpveTE5ODQiLCJhIjoiTGx2V3ZUVSJ9.pZlOrVUXu_aC1i0nTvpIpA';
 
@@ -42,6 +43,7 @@ var shapeLayerCache = {};
 class MyMap {
   constructor(opts) {
     _.extend(this, opts);
+
     this.map = L.mapbox.map(this.mapDiv, this.proj);
 
     // represents the current user position
@@ -49,9 +51,6 @@ class MyMap {
 
     // L.Marker, representing users position
     this.positionMarker = null;
-
-    //
-    this.stopsGeoJson = {};
 
     // Map Layers
     this.nearestStopsLayer;
@@ -73,15 +72,8 @@ class MyMap {
       "stroke-opacity": 0.5
     };
 
-    this.coloursArray = [
-      '#d53e4f',
-      '#fc8d59',
-      '#fee08b',
-      '#ffffbf',
-      '#e6f598',
-      '#99d594',
-      '#3288bd'];
     this.lastColor = 0;
+    this.shapeColors = new PickNext({list: ['#d53e4f', '#fc8d59', '#fee08b', '#ffffbf', '#e6f598', '#99d594', '#3288bd']});
 
     // holds the circles (stops) + shape for a route
     // we map this to a Layer in the toggle Layer panel, to ensure we remove all compoonents of a route
@@ -320,12 +312,9 @@ class MyMap {
     return stopsWithinRadius.features.length;
   }
 
+  // write a colours module!
   addShapeLayer(shapeData, stopsData) {
-    var nextColor = this.lastColor++ > (this.coloursArray.length - 1) ? 0 : this.lastColor,
-        shapeColor = this.coloursArray[nextColor];
-
-    this.lastColor = nextColor;
-
+    var shapeColor = this.shapeColors.next();
     var classCtx = this; // need this for nested event handlers
     var shapeId = shapeData.properties.shape_id.shape_id,
         routeLength = (turf.lineDistance(shapeData, 'kilometers')).toFixed(2),
@@ -345,7 +334,8 @@ class MyMap {
           layer.setStyle(shapeStyle);
           layer.on({
             add: () => {
-              classCtx.map.fitBounds(classCtx.shapeLayer.getBounds());
+              //console.log(classCtx, classCtx.map);
+              //classCtx.map.fitBounds(classCtx.shapeLayer.getBounds());
               layer.bindPopup(shapeLayerPopup);
 
               var circles = [],
